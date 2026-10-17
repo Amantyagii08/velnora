@@ -1,0 +1,7 @@
+package com.ruralmarketplace.repository;
+import com.ruralmarketplace.entity.Category;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CategoryRepository extends JpaRepository<Category,Long> {
+    
+}
