@@ -59,5 +59,18 @@ public ResponseEntity<Map<String, String>> handleProductNotFound(
 }
 
 
+@ExceptionHandler(IllegalArgumentException.class)
+public ResponseEntity<Map<String, String>> handleIllegalArgument(
+        IllegalArgumentException ex) {
+
+    Map<String, String> error = new HashMap<>();
+    error.put("message", ex.getMessage());
+
+    return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(error);
+}
+
+
 }
 

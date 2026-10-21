@@ -115,5 +115,45 @@ public class Product {
     public void setShop(Shop shop) {
         this.shop = shop;
     }
+
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    private Boolean discountActive = false;
+
+    public BigDecimal getDiscountAmount() {
+        return discountAmount;
+    }
+
+    public void setDiscountAmount(BigDecimal discountAmount) {
+        this.discountAmount = discountAmount;
+    }
+
+    public Boolean getDiscountActive() {
+        return discountActive;
+    }
+
+    public void setDiscountActive(Boolean discountActive) {
+        this.discountActive = discountActive;
+    }
+
+    public BigDecimal getDiscountedPrice() {
+    if (Boolean.TRUE.equals(discountActive)) {
+        return price.subtract(discountAmount);
+    }
+
+    return price;
+}
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
+    }
+
+    @Column(length = 500)
+    private String imagePath;
+    
 }
 

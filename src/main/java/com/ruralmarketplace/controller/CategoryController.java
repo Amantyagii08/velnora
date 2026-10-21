@@ -3,10 +3,15 @@ package com.ruralmarketplace.controller;
 
 import com.ruralmarketplace.entity.Category;
 import com.ruralmarketplace.service.CategoryService;
+
+
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import jakarta.validation.Valid;
+
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -18,10 +23,14 @@ public class CategoryController {
         this.categoryService = categoryService;
     }
 
-    @PostMapping
-    public Category createCategory(@Valid @RequestBody Category category) {
-        return categoryService.createCategory(category);
-    }
+   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+public Category createCategory(
+        @ModelAttribute Category category,
+        @RequestParam(value = "image", required = false)
+        MultipartFile image) throws IOException {
+
+    return categoryService.createCategory(category, image);
+}
 
     @GetMapping
     public List<Category> getAllCategories() {

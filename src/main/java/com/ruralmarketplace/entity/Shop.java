@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import jakarta.persistence.Column;
 
 @Entity
 public class Shop {
@@ -70,5 +71,17 @@ public class Shop {
     public void setCategory(Category category) {
         this.category = category;
     }
-}
+
+    @Column (length = 500)
+    private String imagePath;
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
+    }
+    
+}   
 

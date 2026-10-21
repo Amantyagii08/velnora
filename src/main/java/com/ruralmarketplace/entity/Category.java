@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Size;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import jakarta.persistence.Column;
 
 
 @Entity 
@@ -32,6 +33,17 @@ public class Category
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    @Column(length = 500)
+    private String imagePath;
+
+    public String getImagePath() {
+        return imagePath;
+    }
+
+    public void setImagePath(String imagePath) {
+        this.imagePath = imagePath;
     }
 
     public Category(){

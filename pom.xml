@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.ruralmarketplace</groupId>
-	<artifactId>rural-marketplace</artifactId>
+	<artifactId>velnora</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name/>
 	<description/>
