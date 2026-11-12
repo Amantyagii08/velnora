@@ -27,6 +27,8 @@ public class RegisterRequest {
     @Size(min = 8, max = 72, message = "Password must be 8 to 72 characters")
     private String password;
 
+    private String role = "CUSTOMER";
+
     public String getFullName() {
         return fullName;
     }
@@ -58,4 +60,7 @@ public class RegisterRequest {
     public void setPassword(String password) {
         this.password = password;
     }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 }

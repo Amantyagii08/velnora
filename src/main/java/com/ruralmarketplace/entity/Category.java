@@ -38,6 +38,9 @@ public class Category
     @Column(length = 500)
     private String imagePath;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
     public String getImagePath() {
         return imagePath;
     }
@@ -45,6 +48,9 @@ public class Category
     public void setImagePath(String imagePath) {
         this.imagePath = imagePath;
     }
+
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
 
     public Category(){
 

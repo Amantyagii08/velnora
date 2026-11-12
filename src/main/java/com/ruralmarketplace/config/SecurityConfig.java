@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -30,6 +31,7 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.proc.SecurityContext;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Value("${app.jwt.secret}")
@@ -48,12 +50,15 @@ public class SecurityConfig {
         return new SecretKeySpec(keyBytes, "HmacSHA256");
     }
 
-    @Bean
-    public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
-        return new NimbusJwtEncoder(
-                new ImmutableSecret<SecurityContext>(jwtSecretKey)
-        );
-    }
+    
+@Bean
+public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
+
+    return new NimbusJwtEncoder(
+            new ImmutableSecret<SecurityContext>(jwtSecretKey)
+    );
+}
+
 
     @Bean
     public JwtDecoder jwtDecoder(SecretKey jwtSecretKey) {

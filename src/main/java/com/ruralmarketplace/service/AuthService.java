@@ -52,9 +52,12 @@ public class AuthService {
                 passwordEncoder.encode(request.getPassword())
         );
 
-        // Public registration defaults to CUSTOMER.
-        // ADMIN cannot be selected by the user.
-        user.setRole(UserRole.CUSTOMER);
+        String requestedRole = request.getRole() == null
+                ? "CUSTOMER" : request.getRole().trim().toUpperCase();
+        if (!requestedRole.equals("CUSTOMER") && !requestedRole.equals("SHOPKEEPER")) {
+            throw new IllegalArgumentException("Public registration supports CUSTOMER or SHOPKEEPER only");
+        }
+        user.setRole(UserRole.valueOf(requestedRole));
 
         User savedUser = userRepository.save(user);
 
@@ -85,6 +88,10 @@ public class AuthService {
                 .orElseThrow(() ->
                         new IllegalArgumentException("User not found")
                 );
+
+        if (user.isSuspended()) {
+            throw new IllegalArgumentException("This account is suspended");
+        }
 
         String token = jwtService.generateToken(user);
 

@@ -154,6 +154,35 @@ public class Product {
 
     @Column(length = 500)
     private String imagePath;
+
+    @jakarta.persistence.Column(nullable = false)
+    private boolean active = true;
+
+    @jakarta.persistence.Column(nullable = false)
+    private boolean clearanceActive = false;
+
+    @jakarta.persistence.Column(precision = 12, scale = 2)
+    private BigDecimal clearanceDiscountAmount = BigDecimal.ZERO;
+
+    private java.time.LocalDateTime clearanceExpiresAt;
+
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
+    public boolean isClearanceActive() { return clearanceActive; }
+    public void setClearanceActive(boolean clearanceActive) { this.clearanceActive = clearanceActive; }
+    public BigDecimal getClearanceDiscountAmount() { return clearanceDiscountAmount; }
+    public void setClearanceDiscountAmount(BigDecimal amount) { this.clearanceDiscountAmount = amount; }
+    public java.time.LocalDateTime getClearanceExpiresAt() { return clearanceExpiresAt; }
+    public void setClearanceExpiresAt(java.time.LocalDateTime expiresAt) { this.clearanceExpiresAt = expiresAt; }
+
+    public BigDecimal getCurrentPrice() {
+        BigDecimal currentPrice = price;
+        if (clearanceActive && (clearanceExpiresAt == null
+                || clearanceExpiresAt.isAfter(java.time.LocalDateTime.now()))) {
+            return currentPrice.subtract(clearanceDiscountAmount);
+        }
+        return getDiscountedPrice();
+    }
     
 }
 

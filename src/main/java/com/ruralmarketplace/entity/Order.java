@@ -20,6 +20,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "customer_orders")
@@ -31,6 +32,7 @@ public class Order {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "shop_id", nullable = false)
+    @JsonIgnore
     private Shop shop;
 
     @Column(nullable = false, precision = 12, scale = 2)
@@ -44,7 +46,7 @@ public class Order {
     @Column(nullable = false, length = 20)
     private FulfillmentType fulfillmentType;
 
-    @Column(nullable = false, length = 255)
+    @Column(length = 255)
     private String deliveryAddress;
 
     @Column(nullable = false, length = 100)
@@ -61,6 +63,7 @@ public class Order {
         cascade = CascadeType.ALL,
         orphanRemoval = true
     )
+    @JsonIgnore
     private List<OrderItem> items = new ArrayList<>();
 
     @PrePersist
@@ -72,6 +75,19 @@ public class Order {
             status = OrderStatus.PLACED;
         }
     }
+
+    public User getCustomer() {
+        return customer;
+    }
+
+    public void setCustomer(User customer) {
+        this.customer = customer;
+    }
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "customer_id", nullable = false)
+    @JsonIgnore
+    private User customer;
 
     public Long getId() {
         return id;

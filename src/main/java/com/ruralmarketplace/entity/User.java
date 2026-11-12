@@ -18,6 +18,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "users")
@@ -37,6 +38,7 @@ public class User implements UserDetails {
     private String phone;
 
     @Column(nullable = false)
+    @JsonIgnore
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
@@ -46,27 +48,32 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private boolean enabled = true;
 
+    @Column(nullable = false)
+    private boolean suspended = false;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        if (enabled == false) {
-            enabled = true;
-        }
     }
 
     // UserDetails implementation
 
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (role == null) {
+            return List.of();
+        }
         return List.of(
             new SimpleGrantedAuthority("ROLE_" + role.name())
         );
     }
 
     @Override
+    @JsonIgnore
     public String getPassword() {
         return passwordHash;
     }
@@ -93,7 +100,7 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return enabled;
+        return enabled && !suspended;
     }
 
     // Getters and setters
@@ -141,6 +148,9 @@ public class User implements UserDetails {
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
+
+    public boolean isSuspended() { return suspended; }
+    public void setSuspended(boolean suspended) { this.suspended = suspended; }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;

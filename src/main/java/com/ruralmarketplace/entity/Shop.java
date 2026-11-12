@@ -10,6 +10,10 @@ import jakarta.persistence.ManyToOne;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import jakarta.persistence.Column;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 public class Shop {
@@ -75,6 +79,18 @@ public class Shop {
     @Column (length = 500)
     private String imagePath;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "owner_id", nullable = false)
+    @JsonIgnore
+    private User owner;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private ShopApprovalStatus approvalStatus = ShopApprovalStatus.PENDING;
+
+    @Column(nullable = false)
+    private boolean active = true;
+
     public String getImagePath() {
         return imagePath;
     }
@@ -82,6 +98,13 @@ public class Shop {
     public void setImagePath(String imagePath) {
         this.imagePath = imagePath;
     }
+
+    public User getOwner() { return owner; }
+    public void setOwner(User owner) { this.owner = owner; }
+    public ShopApprovalStatus getApprovalStatus() { return approvalStatus; }
+    public void setApprovalStatus(ShopApprovalStatus approvalStatus) { this.approvalStatus = approvalStatus; }
+    public boolean isActive() { return active; }
+    public void setActive(boolean active) { this.active = active; }
     
 }   
 

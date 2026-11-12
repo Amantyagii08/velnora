@@ -3,6 +3,8 @@ package com.ruralmarketplace.service;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -26,6 +28,9 @@ public class JwtService {
 
         Instant now = Instant.now();
 
+        JwsHeader header = JwsHeader.with(MacAlgorithm.HS256)
+            .build();
+
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer("velnora")
                 .issuedAt(now)
@@ -37,7 +42,7 @@ public class JwtService {
                 .build();
 
         return jwtEncoder.encode(
-                JwtEncoderParameters.from(claims)
+                JwtEncoderParameters.from( header ,claims)
         ).getTokenValue();
     }
 
