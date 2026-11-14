@@ -41,7 +41,7 @@ public class OrderController {
     
 
     @GetMapping("/shop/{shopId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SHOPKEEPER')")
     public List<OrderResponse> getOrdersByShop(
             @PathVariable Long shopId, @AuthenticationPrincipal Jwt jwt) {
 
@@ -87,17 +87,19 @@ public List<OrderResponse> getMyShopOrders(@AuthenticationPrincipal Jwt jwt) {
 
     public static class OrderResponse {
         private final Long id, shopId;
-        private final String shopName, customerName, customerPhone, fulfillmentType, deliveryAddress, status;
+        private final String shopName, shopContactPhone, shopContactEmail, customerName, customerPhone, fulfillmentType, deliveryAddress, status;
         private final java.math.BigDecimal totalAmount;
         private final java.time.LocalDateTime createdAt;
         private final List<OrderLineResponse> items;
         public OrderResponse(Order order) {
             id = order.getId(); shopId = order.getShop().getId(); shopName = order.getShop().getName();
+            shopContactPhone = order.getShop().getContactPhone(); shopContactEmail = order.getShop().getContactEmail();
             customerName = order.getCustomerName(); customerPhone = order.getCustomerPhone(); fulfillmentType = order.getFulfillmentType().name();
             deliveryAddress = order.getDeliveryAddress(); totalAmount = order.getTotalAmount(); status = order.getStatus().name(); createdAt = order.getCreatedAt();
             items = order.getItems().stream().map(OrderLineResponse::new).toList();
         }
         public Long getId() { return id; } public Long getShopId() { return shopId; } public String getShopName() { return shopName; }
+        public String getShopContactPhone() { return shopContactPhone; } public String getShopContactEmail() { return shopContactEmail; }
         public String getCustomerName() { return customerName; } public String getCustomerPhone() { return customerPhone; }
         public String getFulfillmentType() { return fulfillmentType; } public String getDeliveryAddress() { return deliveryAddress; }
         public java.math.BigDecimal getTotalAmount() { return totalAmount; } public String getStatus() { return status; }

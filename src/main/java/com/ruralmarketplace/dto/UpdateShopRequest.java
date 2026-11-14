@@ -4,6 +4,8 @@ package com.ruralmarketplace.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Email;
 
 public class UpdateShopRequest {
 
@@ -20,6 +22,13 @@ public class UpdateShopRequest {
 
     @NotNull(message = "Category ID is required")
     private Long categoryId;
+
+    @Pattern(regexp = "^$|^[0-9]{10,15}$", message = "Shop phone must contain 10 to 15 digits")
+    private String contactPhone;
+
+    @Email(message = "Enter a valid shop contact email")
+    @Size(max = 150)
+    private String contactEmail;
 
     public String getName() {
         return name;
@@ -52,6 +61,10 @@ public class UpdateShopRequest {
     public void setCategoryId(Long categoryId) {
         this.categoryId = categoryId;
     }
+    public String getContactPhone() { return contactPhone; }
+    public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
+    public String getContactEmail() { return contactEmail; }
+    public void setContactEmail(String contactEmail) { this.contactEmail = contactEmail; }
 }
 
 

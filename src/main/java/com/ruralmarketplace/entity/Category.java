@@ -17,6 +17,7 @@ public class Category
     
     @NotBlank(message = "Category name is required")
     @Size(max = 50, message = "Category name must not exceed 50 characters")
+    @Column(nullable = false, unique = true, length = 50)
     private String name;
 
     public long getId() {

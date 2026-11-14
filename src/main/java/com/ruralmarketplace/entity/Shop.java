@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import jakarta.persistence.Column;
@@ -32,6 +33,12 @@ public class Shop {
     @NotBlank(message = "Address is required")
     @Size(max = 255, message = "Address must not exceed 255 characters")
     private String address;
+
+    @Column(length = 20)
+    private String contactPhone;
+
+    @Column(length = 150)
+    private String contactEmail;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "category_id", nullable = false)
@@ -68,6 +75,11 @@ public class Shop {
         this.address = address;
     }
 
+    public String getContactPhone() { return contactPhone; }
+    public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
+    public String getContactEmail() { return contactEmail; }
+    public void setContactEmail(String contactEmail) { this.contactEmail = contactEmail; }
+
     public Category getCategory() {
         return category;
     }
@@ -79,7 +91,7 @@ public class Shop {
     @Column (length = 500)
     private String imagePath;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "owner_id", nullable = false)
     @JsonIgnore
     private User owner;

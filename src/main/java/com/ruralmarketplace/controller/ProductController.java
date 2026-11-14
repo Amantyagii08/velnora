@@ -42,8 +42,9 @@ public class ProductController {
             @PathVariable Long shopId,
             @Valid @RequestPart("products") CreateProductRequest request,
             @RequestPart (value = "image", required = false)
-            MultipartFile image)throws IOException {
-        return productService.createProduct(shopId, request, image);
+            MultipartFile image,
+            @AuthenticationPrincipal Jwt jwt)throws IOException {
+        return productService.createProduct(shopId, request, image, jwt.getSubject());
     }
 
     
@@ -130,6 +131,13 @@ public Product addStock(
         @Valid @RequestBody AddStockRequest request, @AuthenticationPrincipal Jwt jwt) {
 
     return productService.addStock(shopId, productId, request, jwt.getSubject());
+}
+
+@PatchMapping("/api/shops/{shopId}/products/{productId}/availability")
+@PreAuthorize("hasRole('SHOPKEEPER')")
+public Product setAvailability(@PathVariable Long shopId, @PathVariable Long productId,
+        @RequestParam boolean available, @AuthenticationPrincipal Jwt jwt) {
+    return productService.setAvailability(shopId, productId, available, jwt.getSubject());
 }
 
 

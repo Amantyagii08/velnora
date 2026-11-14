@@ -52,7 +52,7 @@ public class Order {
     @Column(nullable = false, length = 100)
     private String customerName;
 
-    @Column(nullable = false, length = 20)
+    @Column(length = 20)
     private String customerPhone;
 
     @Column(nullable = false)

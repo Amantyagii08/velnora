@@ -11,6 +11,7 @@ import com.ruralmarketplace.entity.User;
 import com.ruralmarketplace.entity.UserRole;
 import com.ruralmarketplace.exception.CategoryNotFoundException;
 import com.ruralmarketplace.exception.ShopNotFoundException;
+import com.ruralmarketplace.exception.ResourceNotFoundException;
 import com.ruralmarketplace.repository.CategoryRepository;
 import com.ruralmarketplace.repository.ShopRepository;
 import com.ruralmarketplace.repository.UserRepository;
@@ -21,6 +22,7 @@ import java.util.List;
 import com.ruralmarketplace.service.image.ImageStorageService;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
+import org.springframework.security.access.AccessDeniedException;
 
 @Service
 public class ShopService {
@@ -32,15 +34,15 @@ public class ShopService {
 
     public void requireShopOwner(Long shopId, String email) {
         Shop shop = shopRepository.findById(shopId).orElseThrow(() -> new ShopNotFoundException("Shop not found with ID: " + shopId));
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("User not found"));
-        if (!shop.getOwner().getId().equals(user.getId())) throw new IllegalArgumentException("You can only manage your own shop");
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (shop.getOwner() == null || !shop.getOwner().getId().equals(user.getId())) throw new AccessDeniedException("You can only manage your own shop");
     }
 
     @Transactional(readOnly = true)
     public Shop getMyShop(String email) {
-        User user = userRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User user = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("User not found"));
         if (user.getRole() != UserRole.SHOPKEEPER) throw new IllegalArgumentException("Only shopkeepers have shops");
-        return shopRepository.findByOwner_Id(user.getId()).orElseThrow(() -> new IllegalArgumentException("No shop application found"));
+        return shopRepository.findByOwner_Id(user.getId()).orElseThrow(() -> new ResourceNotFoundException("No shop application found"));
     }
 
     public ShopService(
@@ -67,18 +69,22 @@ public class ShopService {
                                 + request.getCategoryId()
                 ));
 
-        Shop shop = new Shop();
         User owner = userRepository.findByEmail(ownerEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Shopkeeper account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Shopkeeper account not found"));
         if (owner.getRole() != UserRole.SHOPKEEPER) {
             throw new IllegalArgumentException("Only shopkeepers can submit a shop");
         }
-        if (shopRepository.findByOwner_Id(owner.getId()).isPresent()) {
+        Shop shop = shopRepository.findByOwner_Id(owner.getId()).orElse(null);
+        if (shop != null && shop.getApprovalStatus() != ShopApprovalStatus.REJECTED) {
             throw new IllegalArgumentException("This shopkeeper already has a shop application");
         }
+        if (shop == null) shop = new Shop();
+        String oldImagePath = shop.getImagePath();
         shop.setName(request.getName().trim());
         shop.setDescription(request.getDescription());
         shop.setAddress(request.getAddress().trim());
+        shop.setContactPhone(request.getContactPhone());
+        shop.setContactEmail(request.getContactEmail());
         shop.setCategory(category);
         shop.setOwner(owner);
         shop.setApprovalStatus(ShopApprovalStatus.PENDING);
@@ -89,7 +95,12 @@ public class ShopService {
             shop.setImagePath(imagePath);
         }
 
-        return shopRepository.save(shop);
+        Shop savedShop = shopRepository.save(shop);
+        if (image != null && !image.isEmpty() && oldImagePath != null
+                && !oldImagePath.equals(savedShop.getImagePath())) {
+            imageStorageService.deleteImageAfterCommit(oldImagePath);
+        }
+        return savedShop;
     }
 
 
@@ -116,15 +127,25 @@ public Shop updateShop(
     shop.setName(request.getName().trim());
     shop.setDescription(request.getDescription());
     shop.setAddress(request.getAddress().trim());
+    shop.setContactPhone(request.getContactPhone());
+    shop.setContactEmail(request.getContactEmail());
     shop.setCategory(category);
 
+    String oldImagePath = shop.getImagePath();
     if (image != null && !image.isEmpty()) {
         String imagePath =
                 imageStorageService.storeImage(image, "shops");
         shop.setImagePath(imagePath);
     }
 
-    return shopRepository.save(shop);
+    shop.setApprovalStatus(ShopApprovalStatus.PENDING);
+
+    Shop savedShop = shopRepository.save(shop);
+    if (image != null && !image.isEmpty() && oldImagePath != null
+            && !oldImagePath.equals(savedShop.getImagePath())) {
+        imageStorageService.deleteImageAfterCommit(oldImagePath);
+    }
+    return savedShop;
 }
 
     

@@ -41,8 +41,8 @@ public class ShopController {
     }
 
     
-    @GetMapping("/{ShopId}")
-    public Shop getShopById(@PathVariable Long shopId) {
+    @GetMapping("/{shopId}")
+    public Shop getShopById(@PathVariable("shopId") Long shopId) {
         return shopService.getShopById(shopId);
     }
 

@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import com.ruralmarketplace.service.ShopService;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +23,8 @@ public class ClearanceController {
     @PostMapping("/shops/{shopId}/products/{productId}/clearance")
     @PreAuthorize("hasRole('SHOPKEEPER')")
     public Product create(@PathVariable Long shopId, @PathVariable Long productId, @RequestParam BigDecimal discountAmount,
-            @RequestParam(required = false) LocalDateTime expiresAt, @AuthenticationPrincipal Jwt jwt) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime expiresAt,
+            @AuthenticationPrincipal Jwt jwt) {
         shopService.requireShopOwner(shopId, jwt.getSubject());
         return productService.setClearance(shopId, productId, discountAmount, expiresAt, jwt.getSubject());
     }

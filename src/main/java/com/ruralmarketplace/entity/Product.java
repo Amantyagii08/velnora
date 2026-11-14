@@ -101,12 +101,14 @@ public class Product {
     }
 
     public Boolean getAvailable() {
-        return available;
+        return Boolean.TRUE.equals(available) && stockQuantity != null && stockQuantity > 0;
     }
 
     public void setAvailable(Boolean available) {
         this.available = available;
     }
+
+    public boolean isManuallyAvailable() { return Boolean.TRUE.equals(available); }
 
     public Shop getShop() {
         return shop;
@@ -169,6 +171,10 @@ public class Product {
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
     public boolean isClearanceActive() { return clearanceActive; }
+    public boolean hasActiveClearance() {
+        return clearanceActive && (clearanceExpiresAt == null
+                || clearanceExpiresAt.isAfter(java.time.LocalDateTime.now()));
+    }
     public void setClearanceActive(boolean clearanceActive) { this.clearanceActive = clearanceActive; }
     public BigDecimal getClearanceDiscountAmount() { return clearanceDiscountAmount; }
     public void setClearanceDiscountAmount(BigDecimal amount) { this.clearanceDiscountAmount = amount; }
@@ -177,8 +183,7 @@ public class Product {
 
     public BigDecimal getCurrentPrice() {
         BigDecimal currentPrice = price;
-        if (clearanceActive && (clearanceExpiresAt == null
-                || clearanceExpiresAt.isAfter(java.time.LocalDateTime.now()))) {
+        if (hasActiveClearance()) {
             return currentPrice.subtract(clearanceDiscountAmount);
         }
         return getDiscountedPrice();

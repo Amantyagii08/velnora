@@ -2,6 +2,7 @@
 package com.ruralmarketplace.service;
 
 import com.ruralmarketplace.entity.Category;
+import com.ruralmarketplace.dto.CategoryRequest;
 import com.ruralmarketplace.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +25,9 @@ public class CategoryService {
         this.imageStorageService = imageStorageService;
     }
 
-    public Category createCategory(Category category, MultipartFile image)throws IOException {
+    public Category createCategory(CategoryRequest request, MultipartFile image)throws IOException {
+        Category category = new Category();
+        category.setName(request.getName().trim());
         if(image != null && !image.isEmpty()){
             String imagePath = imageStorageService.storeImage(image,"categories");
 
@@ -39,6 +42,10 @@ public class CategoryService {
 
     public String storeCategoryImage(MultipartFile image) throws IOException {
         return imageStorageService.storeImage(image, "categories");
+    }
+
+    public void deleteStoredImage(String imagePath) throws IOException {
+        imageStorageService.deleteImageAfterCommit(imagePath);
     }
 }
 

@@ -21,6 +21,8 @@ import com.ruralmarketplace.repository.OrderRepository;
 import com.ruralmarketplace.repository.ProductRepository;
 import com.ruralmarketplace.repository.ShopRepository;
 import com.ruralmarketplace.repository.UserRepository;
+import org.springframework.security.access.AccessDeniedException;
+import com.ruralmarketplace.exception.ResourceNotFoundException;
 
 @Service
 public class OrderService {
@@ -48,7 +50,7 @@ public class OrderService {
             String customerEmail) {
 
         User customer = userRepository.findByEmail(customerEmail)
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Authenticated customer not found"));
 
         if (customer.getRole() != com.ruralmarketplace.entity.UserRole.CUSTOMER) {
@@ -57,7 +59,7 @@ public class OrderService {
         }
 
         Shop shop = shopRepository.findById(request.getShopId())
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Shop not found: " + request.getShopId()));
         if (shop.getApprovalStatus() != ShopApprovalStatus.APPROVED || !shop.isActive()) {
             throw new IllegalArgumentException("Orders can only be placed with approved active shops");
@@ -86,7 +88,9 @@ public class OrderService {
         BigDecimal total = BigDecimal.ZERO;
 
         for (CreateOrderRequest.OrderItemRequest itemRequest
-                : request.getItems()) {
+                : request.getItems().stream()
+                        .sorted(java.util.Comparator.comparing(CreateOrderRequest.OrderItemRequest::getProductId))
+                        .toList()) {
 
             int quantity = itemRequest.getQuantity();
 
@@ -97,7 +101,7 @@ public class OrderService {
 
             Product product = productRepository
                     .findByIdForUpdate(itemRequest.getProductId())
-                    .orElseThrow(() -> new IllegalArgumentException(
+                    .orElseThrow(() -> new ResourceNotFoundException(
                             "Product not found: "
                                     + itemRequest.getProductId()));
 
@@ -106,7 +110,7 @@ public class OrderService {
                         "All products must belong to the selected shop");
             }
 
-            if (!Boolean.TRUE.equals(product.getAvailable())) {
+            if (!product.isManuallyAvailable() || product.getStockQuantity() <= 0) {
                 throw new IllegalArgumentException(
                         "Product is unavailable: " + product.getName());
             }
@@ -142,9 +146,6 @@ public class OrderService {
             product.setStockQuantity(
                     product.getStockQuantity() - quantity);
 
-            if (product.getStockQuantity() == 0) {
-                product.setAvailable(false);
-            }
         }
 
         order.setTotalAmount(total);
@@ -156,18 +157,22 @@ public class OrderService {
     public List<Order> getOrdersByShop(Long shopId, String actorEmail) {
 
         if (!shopRepository.existsById(shopId)) {
-            throw new IllegalArgumentException(
+            throw new ResourceNotFoundException(
                     "Shop not found: " + shopId);
         }
 
-        User actor = userRepository.findByEmail(actorEmail).orElseThrow(() -> new IllegalArgumentException("User not found"));
-        Shop shop = shopRepository.findById(shopId).orElseThrow(() -> new IllegalArgumentException("Shop not found"));
+        User actor = userRepository.findByEmail(actorEmail).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        Shop shop = shopRepository.findById(shopId).orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
         if (actor.getRole() != com.ruralmarketplace.entity.UserRole.ADMIN
                 && (actor.getRole() != com.ruralmarketplace.entity.UserRole.SHOPKEEPER
                 || !shop.getOwner().getId().equals(actor.getId()))) {
-            throw new IllegalArgumentException("You can only view orders for your own shop");
+            throw new AccessDeniedException("You can only view orders for your own shop");
         }
 
+        if (actor.getRole() == com.ruralmarketplace.entity.UserRole.SHOPKEEPER
+                && shop.getApprovalStatus() != ShopApprovalStatus.APPROVED) {
+            throw new IllegalArgumentException("Shop application is not approved yet");
+        }
         return orderRepository.findByShop_IdOrderByCreatedAtDesc(shopId);
     }
 
@@ -180,8 +185,8 @@ public class OrderService {
             OrderStatus newStatus,
             String actorEmail) {
 
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new IllegalArgumentException(
+        Order order = orderRepository.findByIdForUpdate(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Order not found: " + orderId));
 
         if (newStatus == null) {
@@ -200,21 +205,21 @@ public class OrderService {
                     "An order cannot be moved back to PLACED");
         }
 
-        User actor = userRepository.findByEmail(actorEmail).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        User actor = userRepository.findByEmail(actorEmail).orElseThrow(() -> new ResourceNotFoundException("User not found"));
         boolean admin = actor.getRole() == com.ruralmarketplace.entity.UserRole.ADMIN;
         boolean owner = actor.getRole() == com.ruralmarketplace.entity.UserRole.SHOPKEEPER
                 && order.getShop().getOwner().getId().equals(actor.getId());
         boolean customer = actor.getRole() == com.ruralmarketplace.entity.UserRole.CUSTOMER
                 && order.getCustomer().getId().equals(actor.getId());
-        if (!admin && !owner && !customer) throw new IllegalArgumentException("You cannot update this order");
+        if (!admin && !owner && !customer) throw new AccessDeniedException("You cannot update this order");
 
         if (newStatus == OrderStatus.CANCELLED) {
             if (!admin && !(customer && order.getStatus() == OrderStatus.PLACED)
                     && !(owner && (order.getStatus() == OrderStatus.PLACED || order.getStatus() == OrderStatus.ACCEPTED))) {
-                throw new IllegalArgumentException("This order can no longer be cancelled");
+                throw new AccessDeniedException("This order can no longer be cancelled");
             }
         } else {
-            if (!admin && !owner) throw new IllegalArgumentException("Only the shopkeeper can update order progress");
+            if (!admin && !owner) throw new AccessDeniedException("Only the shopkeeper can update order progress");
             OrderStatus expected = switch (order.getStatus()) {
                 case PLACED -> OrderStatus.ACCEPTED;
                 case ACCEPTED -> OrderStatus.PREPARING;
@@ -227,26 +232,28 @@ public class OrderService {
 
         if (newStatus == OrderStatus.CANCELLED) {
 
-            for (OrderItem item : order.getItems()) {
-                Product product = item.getProduct();
-
-                product.setStockQuantity(
-                        product.getStockQuantity() + item.getQuantity());
-
-                product.setAvailable(product.getStockQuantity() > 0);
+            List<OrderItem> items = order.getItems().stream()
+                    .sorted(java.util.Comparator.comparing(item -> item.getProduct().getId()))
+                    .toList();
+            for (OrderItem item : items) {
+                Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Ordered product no longer exists"));
+                product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
             }
         }
 
         order.setStatus(newStatus);
 
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        initializeOrderResponseFields(savedOrder);
+        return savedOrder;
     }
 
 
 public List<Order> getMyOrders(String customerEmail) {
 
     User customer = userRepository.findByEmail(customerEmail)
-            .orElseThrow(() -> new IllegalArgumentException(
+            .orElseThrow(() -> new ResourceNotFoundException(
                     "Customer not found"));
 
     if (customer.getRole() != com.ruralmarketplace.entity.UserRole.CUSTOMER) {
@@ -258,20 +265,27 @@ public List<Order> getMyOrders(String customerEmail) {
             .findByCustomer_EmailOrderByCreatedAtDesc(customerEmail);
 }
 
+private void initializeOrderResponseFields(Order order) {
+    order.getShop().getName();
+    order.getShop().getContactPhone();
+    order.getShop().getContactEmail();
+    order.getItems().forEach(item -> item.getProduct().getName());
+}
+
 public Order getCustomerOrderById(
         Long orderId,
         String customerEmail) {
 
     return orderRepository
             .findByIdAndCustomer_Email(orderId, customerEmail)
-            .orElseThrow(() -> new IllegalArgumentException(
+            .orElseThrow(() -> new ResourceNotFoundException(
                     "Order not found for this customer"));
 }
 
 public List<Order> getMyShopOrders(String email) {
-    User owner = userRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("Shopkeeper not found"));
+    User owner = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("Shopkeeper not found"));
     if (owner.getRole() != com.ruralmarketplace.entity.UserRole.SHOPKEEPER) throw new IllegalArgumentException("Only shopkeepers can access shop orders");
-    Shop shop = shopRepository.findByOwner_Id(owner.getId()).orElseThrow(() -> new IllegalArgumentException("No shop application found"));
+    Shop shop = shopRepository.findByOwner_Id(owner.getId()).orElseThrow(() -> new ResourceNotFoundException("No shop application found"));
     return orderRepository.findByShop_IdOrderByCreatedAtDesc(shop.getId());
 }
 

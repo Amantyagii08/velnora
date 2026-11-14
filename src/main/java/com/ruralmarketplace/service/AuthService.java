@@ -21,33 +21,45 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final LoginAttemptService loginAttemptService;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager,
-            JwtService jwtService) {
+            JwtService jwtService,
+            LoginAttemptService loginAttemptService) {
 
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.loginAttemptService = loginAttemptService;
     }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
 
-        if (userRepository.existsByEmail(request.getEmail())) {
+        String email = request.getEmail().trim().toLowerCase();
+        if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException(
                     "An account with this email already exists"
+            );
+        }
+
+        String phone = request.getPhone() == null || request.getPhone().isBlank()
+                ? null : request.getPhone().trim();
+        if (phone != null && userRepository.existsByPhone(phone)) {
+            throw new IllegalArgumentException(
+                    "An account with this phone number already exists"
             );
         }
 
         User user = new User();
 
         user.setFullName(request.getFullName());
-        user.setEmail(request.getEmail().trim().toLowerCase());
-        user.setPhone(request.getPhone());
+        user.setEmail(email);
+        user.setPhone(phone);
         user.setPasswordHash(
                 passwordEncoder.encode(request.getPassword())
         );
@@ -73,25 +85,29 @@ public class AuthService {
         );
     }
 
-    public AuthResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request, String clientAddress) {
 
         String email = request.getEmail().trim().toLowerCase();
+        String attemptKey = email + "|" + clientAddress;
+        loginAttemptService.checkAllowed(attemptKey);
 
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        email,
-                        request.getPassword()
-                )
-        );
+        userRepository.findByEmail(email).filter(User::isSuspended).ifPresent(user -> {
+            throw new org.springframework.security.authentication.DisabledException("This account is suspended");
+        });
+
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, request.getPassword()));
+            loginAttemptService.recordSuccess(attemptKey);
+        } catch (org.springframework.security.core.AuthenticationException ex) {
+            loginAttemptService.recordFailure(attemptKey);
+            throw ex;
+        }
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
                         new IllegalArgumentException("User not found")
                 );
-
-        if (user.isSuspended()) {
-            throw new IllegalArgumentException("This account is suspended");
-        }
 
         String token = jwtService.generateToken(user);
 

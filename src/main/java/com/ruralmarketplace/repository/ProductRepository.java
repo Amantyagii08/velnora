@@ -7,12 +7,20 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.EntityGraph;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
+
+    @Override
+    @EntityGraph(attributePaths = {"shop", "shop.category", "shop.owner"})
+    List<Product> findAll();
+    @Override
+    @EntityGraph(attributePaths = {"shop", "shop.category", "shop.owner"})
+    java.util.Optional<Product> findById(Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Product p WHERE p.id = :productId")
@@ -32,6 +40,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         :minPrice IS NULL OR
         (
             CASE
+                WHEN p.clearanceActive = true AND (p.clearanceExpiresAt IS NULL OR p.clearanceExpiresAt > CURRENT_TIMESTAMP)
+                THEN p.price - p.clearanceDiscountAmount
                 WHEN p.discountActive = true
                 THEN p.price - p.discountAmount
                 ELSE p.price
@@ -42,19 +52,25 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         :maxPrice IS NULL OR
         (
             CASE
+                WHEN p.clearanceActive = true AND (p.clearanceExpiresAt IS NULL OR p.clearanceExpiresAt > CURRENT_TIMESTAMP)
+                THEN p.price - p.clearanceDiscountAmount
                 WHEN p.discountActive = true
                 THEN p.price - p.discountAmount
                 ELSE p.price
             END
         ) <= :maxPrice
     )
-    AND (:available IS NULL OR p.available = :available)
-    AND (:discountedOnly = false OR p.discountActive = true)
+    AND (:available IS NULL OR (:available = true AND p.available = true AND p.stockQuantity > 0)
+        OR (:available = false AND (p.available = false OR p.stockQuantity = 0)))
+    AND (:discountedOnly = false OR p.discountActive = true OR
+        (p.clearanceActive = true AND (p.clearanceExpiresAt IS NULL OR p.clearanceExpiresAt > CURRENT_TIMESTAMP)))
     ORDER BY
         CASE
             WHEN :sortBy = 'PRICE_LOW_TO_HIGH'
             THEN
                 CASE
+                    WHEN p.clearanceActive = true AND (p.clearanceExpiresAt IS NULL OR p.clearanceExpiresAt > CURRENT_TIMESTAMP)
+                    THEN p.price - p.clearanceDiscountAmount
                     WHEN p.discountActive = true
                     THEN p.price - p.discountAmount
                     ELSE p.price
@@ -64,6 +80,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             WHEN :sortBy = 'PRICE_HIGH_TO_LOW'
             THEN
                 CASE
+                    WHEN p.clearanceActive = true AND (p.clearanceExpiresAt IS NULL OR p.clearanceExpiresAt > CURRENT_TIMESTAMP)
+                    THEN p.price - p.clearanceDiscountAmount
                     WHEN p.discountActive = true
                     THEN p.price - p.discountAmount
                     ELSE p.price
@@ -71,7 +89,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         END DESC,
         CASE
             WHEN :sortBy = 'TOP_DISCOUNT'
-            THEN p.discountAmount
+            THEN CASE WHEN p.clearanceActive = true AND (p.clearanceExpiresAt IS NULL OR p.clearanceExpiresAt > CURRENT_TIMESTAMP) THEN p.clearanceDiscountAmount ELSE p.discountAmount END
         END DESC,
         p.id ASC
     """)
