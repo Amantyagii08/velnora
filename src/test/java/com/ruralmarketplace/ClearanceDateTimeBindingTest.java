@@ -14,6 +14,7 @@ import org.springframework.security.web.method.annotation.AuthenticationPrincipa
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.ruralmarketplace.entity.Product;
+import com.ruralmarketplace.entity.Shop;
 import com.ruralmarketplace.service.ProductService;
 import com.ruralmarketplace.controller.ClearanceController;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,6 +25,8 @@ class ClearanceDateTimeBindingTest {
     void parsesIsoLocalDateTimeRequestParameter() throws Exception {
         AtomicReference<LocalDateTime> receivedExpiry = new AtomicReference<>();
         Product product = new Product();
+        product.setPrice(new BigDecimal("10.00"));
+        product.setShop(new Shop());
         ProductService productService = new ProductService(null, null, null, null) {
             @Override
             public Product setClearance(Long shopId, Long productId, BigDecimal amount,

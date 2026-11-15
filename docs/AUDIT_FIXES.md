@@ -21,4 +21,4 @@ Default local development uses Hibernate schema update. Production uses schema v
 
 ## Verification
 
-Run the Maven test suite before deployment. This workspace's Maven cache was unavailable during this audit session, so the new source changes could not be compiled or exercised here. Checkout concurrency and the full application context also need verification against a running test database; do not use production data for those checks.
+The Maven test suite passed during the latest verification (3 tests, no failures). Checkout concurrency and the production MySQL schema/migrations still need verification against a test database; do not use production data for those checks.

@@ -121,7 +121,8 @@ public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
             User user = userRepository.findByEmail(jwt.getSubject())
                     .orElseThrow(() -> new BadCredentialsException("Account no longer exists"));
             if (!user.isEnabled()) throw new DisabledException("Account is disabled or suspended");
-            Integer tokenVersion = jwt.getClaimAsInt("tokenVersion");
+            Object tokenVersionClaim = jwt.getClaim("tokenVersion");
+            Integer tokenVersion = tokenVersionClaim instanceof Number number ? number.intValue() : null;
             if (tokenVersion != null && tokenVersion != user.getTokenVersion()) {
                 throw new BadCredentialsException("Token has been revoked");
             }
