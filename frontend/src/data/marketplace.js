@@ -1,0 +1,27 @@
+export const categories = [
+  { id: 'retail-groceries', name: 'Retail & Groceries', note: 'Everyday things, close by', image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=85' },
+  { id: 'garments', name: 'Garments', note: 'Made for your everyday', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=85' },
+  { id: 'food-snacks', name: 'Food & Snacks', note: 'Something good to enjoy', image: 'https://images.unsplash.com/photo-1621939514649-280e2aa2f4c2?auto=format&fit=crop&w=900&q=85' },
+];
+
+export const shops = [
+  { id: 'green-basket', name: 'Green Basket Market', categoryId: 'retail-groceries', category: 'Retail & Groceries', description: 'Fresh produce and pantry favourites, picked with care.', area: 'Indiranagar', rating: '4.8', delivery: '20–30 min', image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=85' },
+  { id: 'daily-needs', name: 'Daily Needs Store', categoryId: 'retail-groceries', category: 'Retail & Groceries', description: 'The useful everyday essentials your home runs on.', area: 'Koramangala', rating: '4.7', delivery: '25–35 min', image: 'https://images.unsplash.com/photo-1604719312566-8912e9c8a213?auto=format&fit=crop&w=900&q=85' },
+  { id: 'stitch-strand', name: 'Stitch & Strand', categoryId: 'garments', category: 'Garments', description: 'Easy, considered clothing from an independent neighbourhood boutique.', area: 'Jayanagar', rating: '4.9', delivery: '30–40 min', image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=900&q=85' },
+  { id: 'corner-kitchen', name: 'The Corner Kitchen', categoryId: 'food-snacks', category: 'Food & Snacks', description: 'Local savouries, pantry treats, and small-batch favourites.', area: 'HSR Layout', rating: '4.8', delivery: '20–30 min', image: 'https://images.unsplash.com/photo-1621939514649-280e2aa2f4c2?auto=format&fit=crop&w=900&q=85' },
+];
+
+// Products belong to shops only. Categories are assigned exclusively to shops.
+export const products = [
+  { id: 'mangoes', name: 'Alphonso Mangoes', brand: 'Ratnagiri Select', variant: 'Premium ripe', shopId: 'green-basket', price: 299, wasPrice: 360, unit: '1 kg box', image: 'https://images.unsplash.com/photo-1553279768-865429fa0078?auto=format&fit=crop&w=720&q=85', clearance: true, tag: 'Seasonal pick' },
+  { id: 'basmati', name: 'Aged Basmati Rice', brand: 'India Gate', variant: 'Classic', shopId: 'daily-needs', price: 185, wasPrice: null, unit: '1 kg bag', image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=720&q=85', clearance: false },
+  { id: 'filter-coffee', name: 'Filter Coffee Powder', brand: 'Mysore Concerns', variant: 'Medium roast', shopId: 'green-basket', price: 210, wasPrice: 250, unit: '200 g pouch', image: 'https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=720&q=85', clearance: true, tag: 'Local favourite' },
+  { id: 'steel-bottle', name: 'Insulated Steel Bottle', brand: 'Milton', variant: 'Ocean blue', shopId: 'daily-needs', price: 449, wasPrice: null, unit: '750 ml', image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=720&q=85', clearance: false },
+  { id: 'cotton-kurta', name: 'Everyday Cotton Kurta', brand: 'Stitch & Strand', variant: 'Indigo block print · M', shopId: 'stitch-strand', price: 799, wasPrice: 999, unit: 'Medium', image: 'https://images.unsplash.com/photo-1583391733956-6c78276477e8?auto=format&fit=crop&w=720&q=85', clearance: true, tag: 'Boutique find' },
+  { id: 'khadi-dupatta', name: 'Handwoven Khadi Dupatta', brand: 'Stitch & Strand', variant: 'Natural stripe', shopId: 'stitch-strand', price: 549, wasPrice: null, unit: '2.2 m', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=720&q=85', clearance: false },
+  { id: 'face-wash', name: 'Neem Face Wash', brand: 'Himalaya', variant: 'Purifying', shopId: 'daily-needs', price: 145, wasPrice: null, unit: '150 ml tube', image: 'https://images.unsplash.com/photo-1556229010-6c3f2c9ca5f8?auto=format&fit=crop&w=720&q=85', clearance: false },
+  { id: 'coconut-oil', name: 'Cold Pressed Coconut Oil', brand: 'Parachute', variant: 'Pure coconut', shopId: 'daily-needs', price: 189, wasPrice: 225, unit: '200 ml bottle', image: 'https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=720&q=85', clearance: true, tag: 'Good value' },
+  { id: 'namkeen', name: 'Bikaneri Bhujia', brand: 'Haldiram’s', variant: 'Classic spicy', shopId: 'corner-kitchen', price: 75, wasPrice: null, unit: '200 g pack', image: 'https://images.unsplash.com/photo-1621939514649-280e2aa2f4c2?auto=format&fit=crop&w=720&q=85', clearance: false },
+  { id: 'dark-chocolate', name: 'Dark Chocolate Bites', brand: 'Amul', variant: '55% cocoa', shopId: 'corner-kitchen', price: 99, wasPrice: 120, unit: '150 g pack', image: 'https://images.unsplash.com/photo-1548907040-4d42faa41c41?auto=format&fit=crop&w=720&q=85', clearance: true, tag: 'Sweet little deal' },
+  { id: 'masala-dosa-mix', name: 'Masala Dosa Mix', brand: 'MTR', variant: 'Ready to cook', shopId: 'corner-kitchen', price: 110, wasPrice: null, unit: '500 g pack', image: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=720&q=85', clearance: false },
+];
