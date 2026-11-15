@@ -23,6 +23,7 @@ import java.util.Map;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.data.domain.Page;
 
 @RestController
 public class ProductController {
@@ -71,6 +72,13 @@ public class ProductController {
     public List<Product> searchProducts(
             @RequestParam(required = false) String keyword) {
         return productService.searchProducts(keyword);
+    }
+
+    @GetMapping("/api/products/search/page")
+    public Page<Product> searchProductsPage(@RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return productService.searchPublicProducts(keyword, Math.max(0, page), Math.clamp(size, 1, 100));
     }
 
     

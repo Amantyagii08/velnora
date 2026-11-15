@@ -14,6 +14,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
@@ -66,4 +67,11 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             + "ORDER BY COUNT(o.id) DESC, o.shop.id DESC")
     List<Object[]> findTopShopOrderCounts(@Param("cancelled") OrderStatus cancelled,
             @Param("approved") com.ruralmarketplace.entity.ShopApprovalStatus approved, Pageable pageable);
+
+    @Query("SELECT o FROM Order o JOIN o.shop s WHERE (:status IS NULL OR o.status = :status) "
+            + "AND (:keyword IS NULL OR LOWER(o.customerName) LIKE LOWER(CONCAT('%', :keyword, '%')) "
+            + "OR LOWER(s.name) LIKE LOWER(CONCAT('%', :keyword, '%')) "
+            + "OR (:orderId IS NOT NULL AND o.id = :orderId)) ORDER BY o.createdAt DESC, o.id DESC")
+    Page<Order> searchOrders(@Param("status") OrderStatus status, @Param("keyword") String keyword,
+            @Param("orderId") Long orderId, Pageable pageable);
 }

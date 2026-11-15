@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import java.io.IOException;
 import java.util.List;
 import org.springframework.http.MediaType;
+import org.springframework.data.domain.Page;
 
 @RestController
 @RequestMapping("/api/shops")
@@ -57,6 +58,13 @@ public class ShopController {
     public List<Shop> searchShops(
             @RequestParam(required = false) String keyword) {
         return shopService.searchShops(keyword);
+    }
+
+    @GetMapping("/search/page")
+    public Page<Shop> searchShopsPage(@RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return shopService.searchPublicShops(keyword, Math.max(0, page), Math.clamp(size, 1, 100));
     }
 
     

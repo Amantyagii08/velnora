@@ -9,6 +9,8 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.ruralmarketplace.entity.ShopApprovalStatus;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ShopRepository extends JpaRepository<Shop, Long> {
     @Override
@@ -24,5 +26,14 @@ public interface ShopRepository extends JpaRepository<Shop, Long> {
     Optional<Shop> findByOwner_Id(Long ownerId);
     List<Shop> findByApprovalStatus(ShopApprovalStatus status);
     Page<Shop> findByApprovalStatusAndActiveTrue(ShopApprovalStatus status, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"category", "owner"})
+    Page<Shop> findAllBy(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"category", "owner"})
+    @Query("SELECT s FROM Shop s WHERE s.active = true AND s.approvalStatus = :approved "
+            + "AND (:keyword IS NULL OR LOWER(s.name) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<Shop> searchPublicShops(@Param("approved") ShopApprovalStatus approved,
+            @Param("keyword") String keyword, Pageable pageable);
 }
 

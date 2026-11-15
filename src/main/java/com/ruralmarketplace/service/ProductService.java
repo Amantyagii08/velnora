@@ -29,6 +29,8 @@ import java.util.LinkedHashMap;
 import java.io.IOException;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 
 @Service
@@ -178,6 +180,13 @@ public Product updateProduct(
                 .filter(Product::isActive)
                 .filter(p -> p.getShop().getApprovalStatus() == ShopApprovalStatus.APPROVED && p.getShop().isActive())
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Product> searchPublicProducts(String keyword, int page, int size) {
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        return productRepository.searchPublicProducts(ShopApprovalStatus.APPROVED, normalizedKeyword,
+                PageRequest.of(page, size));
     }
 
     @Transactional(readOnly = true)

@@ -17,6 +17,8 @@ import com.ruralmarketplace.dto.AdminProductResponse;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -50,6 +52,13 @@ public class AdminController {
         return users.findAll().stream().filter(user -> user.getFullName().toLowerCase().contains(query)
                 || user.getEmail().toLowerCase().contains(query)).map(AdminUserResponse::from).toList();
     }
+    @GetMapping("/users/page") public Page<AdminUserResponse> usersPage(
+            @RequestParam(required = false) UserRole role,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return users.searchUsers(role, normalizeKeyword(keyword), pageRequest(page, size)).map(AdminUserResponse::from);
+    }
     @GetMapping("/users/{userId}") public AdminUserResponse userDetails(@PathVariable Long userId) {
         return AdminUserResponse.from(users.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found")));
     }
@@ -59,6 +68,11 @@ public class AdminController {
         user.setSuspended(suspended); return AdminUserResponse.from(users.save(user));
     }
     @GetMapping("/shops") public List<AdminShopResponse> shops() { return shops.findAll().stream().map(AdminShopResponse::from).toList(); }
+    @GetMapping("/shops/page") public Page<AdminShopResponse> shopsPage(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return shops.findAllBy(pageRequest(page, size)).map(AdminShopResponse::from);
+    }
     @GetMapping("/categories") public List<Category> allCategories() { return categoryRepository.findAll(); }
     @PatchMapping("/shops/{shopId}/approval") public AdminShopResponse approveShop(@PathVariable Long shopId,
             @RequestParam ShopApprovalStatus status, @RequestParam(required = false) String rejectionReason) {
@@ -88,6 +102,12 @@ public class AdminController {
                 || (p.getBrand() != null && p.getBrand().toLowerCase().contains(query))
                 || p.getShop().getName().toLowerCase().contains(query)).map(AdminProductResponse::from).toList();
     }
+    @GetMapping("/products/page") public Page<AdminProductResponse> productsPage(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return products.searchAllProducts(normalizeKeyword(keyword), pageRequest(page, size)).map(AdminProductResponse::from);
+    }
     @GetMapping("/products/{productId}") public AdminProductResponse productDetails(@PathVariable Long productId) {
         return AdminProductResponse.from(products.findById(productId).orElseThrow(() -> new ResourceNotFoundException("Product not found")));
     }
@@ -98,6 +118,17 @@ public class AdminController {
     @GetMapping("/orders") public List<OrderController.OrderResponse> orders(@RequestParam(required = false) OrderStatus status) {
         List<Order> result = status == null ? orders.findAll() : orders.findByStatusOrderByCreatedAtDesc(status);
         return result.stream().map(OrderController.OrderResponse::new).toList();
+    }
+    @GetMapping("/orders/page") @Transactional(readOnly = true)
+    public Page<OrderController.OrderResponse> ordersPage(
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        String normalizedKeyword = normalizeKeyword(keyword);
+        Long orderId = parseOrderId(normalizedKeyword);
+        return orders.searchOrders(status, normalizedKeyword, orderId, pageRequest(page, size))
+                .map(OrderController.OrderResponse::new);
     }
     @GetMapping("/orders/search") public List<OrderController.OrderResponse> searchOrders(@RequestParam(required = false) OrderStatus status,
             @RequestParam(required = false) String keyword) {
@@ -135,5 +166,22 @@ public class AdminController {
         Category category = categoryRepository.findById(categoryId).orElseThrow(() -> new ResourceNotFoundException("Category not found"));
         category.setActive(active);
         return categoryRepository.save(category);
+    }
+
+    private static PageRequest pageRequest(int page, int size) {
+        return PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100));
+    }
+
+    private static String normalizeKeyword(String keyword) {
+        return keyword == null || keyword.isBlank() ? null : keyword.trim();
+    }
+
+    private static Long parseOrderId(String keyword) {
+        if (keyword == null || !keyword.chars().allMatch(Character::isDigit)) return null;
+        try {
+            return Long.valueOf(keyword);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }

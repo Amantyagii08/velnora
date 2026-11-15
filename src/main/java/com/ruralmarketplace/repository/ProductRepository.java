@@ -40,6 +40,26 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             + "AND s.approvalStatus = :approved ORDER BY p.id DESC")
     Page<Product> findPublicProducts(@Param("approved") ShopApprovalStatus approved, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"shop", "shop.category", "shop.owner"})
+    Page<Product> findAllBy(Pageable pageable);
+
+    @EntityGraph(attributePaths = {"shop", "shop.category", "shop.owner"})
+    @Query("SELECT p FROM Product p JOIN p.shop s WHERE p.active = true AND s.active = true "
+            + "AND s.approvalStatus = :approved AND (:keyword IS NULL OR "
+            + "LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR "
+            + "LOWER(COALESCE(p.brand, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) OR "
+            + "LOWER(s.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) "
+            + "ORDER BY p.id DESC")
+    Page<Product> searchPublicProducts(@Param("approved") ShopApprovalStatus approved,
+            @Param("keyword") String keyword, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"shop", "shop.category", "shop.owner"})
+    @Query("SELECT p FROM Product p JOIN p.shop s WHERE (:keyword IS NULL OR "
+            + "LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR "
+            + "LOWER(COALESCE(p.brand, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) OR "
+            + "LOWER(s.name) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<Product> searchAllProducts(@Param("keyword") String keyword, Pageable pageable);
+
     @Query("SELECT p FROM Product p JOIN p.shop s WHERE p.active = true AND s.active = true "
             + "AND s.approvalStatus = :approved AND (p.discountActive = true OR "
             + "(p.clearanceActive = true AND (p.clearanceExpiresAt IS NULL OR p.clearanceExpiresAt > CURRENT_TIMESTAMP))) "
