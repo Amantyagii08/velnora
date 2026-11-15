@@ -5,6 +5,8 @@ import com.ruralmarketplace.dto.CreateShopRequest;
 import com.ruralmarketplace.dto.UpdateShopRequest;
 import com.ruralmarketplace.entity.Shop;
 import com.ruralmarketplace.service.ShopService;
+import com.ruralmarketplace.dto.ShopResponse;
+import com.ruralmarketplace.dto.ShopApplicationResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,49 +31,53 @@ public class ShopController {
 
     @PostMapping
     @PreAuthorize("hasRole('SHOPKEEPER')")
-    public Shop createShop(@Valid @RequestPart("shop") CreateShopRequest request,
+    public ShopApplicationResponse createShop(@Valid @RequestPart("shop") CreateShopRequest request,
                             @RequestPart (value = "image",required = false)
                             MultipartFile image,
                             @AuthenticationPrincipal Jwt jwt) throws IOException{
-        return shopService.createShop(request,image,jwt.getSubject());
+        return ShopApplicationResponse.from(shopService.createShop(request,image,jwt.getSubject()));
     }
 
     @GetMapping
-    public List<Shop> getAllShops() {
-        return shopService.getAllShops();
+    public Page<ShopResponse> getAllShops(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return shopService.getAllShops(page, size).map(ShopResponse::from);
     }
 
     
     @GetMapping("/{shopId}")
-    public Shop getShopById(@PathVariable("shopId") Long shopId) {
-        return shopService.getShopById(shopId);
+    public ShopResponse getShopById(@PathVariable("shopId") Long shopId) {
+        return ShopResponse.from(shopService.getShopById(shopId));
     }
 
     @GetMapping("/my-shop")
     @PreAuthorize("hasRole('SHOPKEEPER')")
-    public Shop getMyShop(@AuthenticationPrincipal Jwt jwt) {
-        return shopService.getMyShop(jwt.getSubject());
+    public ShopApplicationResponse getMyShop(@AuthenticationPrincipal Jwt jwt) {
+        return ShopApplicationResponse.from(shopService.getMyShop(jwt.getSubject()));
     }
 
     
     @GetMapping("/search")
-    public List<Shop> searchShops(
-            @RequestParam(required = false) String keyword) {
-        return shopService.searchShops(keyword);
+    public Page<ShopResponse> searchShops(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return shopService.searchShops(keyword, page, size).map(ShopResponse::from);
     }
 
     @GetMapping("/search/page")
-    public Page<Shop> searchShopsPage(@RequestParam(required = false) String keyword,
+    public Page<ShopResponse> searchShopsPage(@RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return shopService.searchPublicShops(keyword, Math.max(0, page), Math.clamp(size, 1, 100));
+        return shopService.searchPublicShops(keyword, page, size).map(ShopResponse::from);
     }
 
     
     @GetMapping("/category/{categoryId}")
-    public List<Shop> getShopsByCategory(
-            @PathVariable Long categoryId) {
-        return shopService.getShopsByCategory(categoryId);
+    public Page<ShopResponse> getShopsByCategory(@PathVariable Long categoryId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return shopService.getShopsByCategory(categoryId, page, size).map(ShopResponse::from);
     }
 
     @PutMapping(
@@ -79,7 +85,7 @@ public class ShopController {
     consumes = MediaType.MULTIPART_FORM_DATA_VALUE
 )
 @PreAuthorize("hasRole('SHOPKEEPER')")
-public Shop updateShop(
+public ShopApplicationResponse updateShop(
         @PathVariable Long shopId,
         @Valid @RequestPart("shop")
         UpdateShopRequest request,
@@ -87,8 +93,8 @@ public Shop updateShop(
         MultipartFile image,
         @AuthenticationPrincipal Jwt jwt) throws IOException {
 
-    return shopService.updateShop(
-            shopId, request, image, jwt.getSubject());
+    return ShopApplicationResponse.from(shopService.updateShop(
+            shopId, request, image, jwt.getSubject()));
 }
 
 }

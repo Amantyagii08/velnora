@@ -33,6 +33,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // Get all orders belonging to a particular shop
     @EntityGraph(attributePaths = {"shop", "customer", "items", "items.product"})
     List<Order> findByShop_IdOrderByCreatedAtDesc(Long shopId);
+    Page<Order> findByShop_IdOrderByCreatedAtDesc(Long shopId, Pageable pageable);
 
     // Find an order only if it belongs to the given customer
     @EntityGraph(attributePaths = {"shop", "customer", "items", "items.product"})
@@ -49,6 +50,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByCustomer_EmailOrderByCreatedAtDesc(
             String email
     );
+    Page<Order> findByCustomer_EmailOrderByCreatedAtDesc(String email, Pageable pageable);
     long countByStatus(OrderStatus status);
     @EntityGraph(attributePaths = {"shop", "customer", "items", "items.product"})
     List<Order> findByStatusOrderByCreatedAtDesc(OrderStatus status);

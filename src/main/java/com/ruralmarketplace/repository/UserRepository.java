@@ -21,6 +21,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByPhone(String phone);
     boolean existsByPhoneAndIdNot(String phone, Long id);
     List<User> findByRole(UserRole role);
+    long countByRole(UserRole role);
 
     @Query("SELECT u FROM User u WHERE (:role IS NULL OR u.role = :role) AND "
             + "(:keyword IS NULL OR LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) "

@@ -27,7 +27,7 @@ public class ImageStorageService {
     private final Path uploadRoot;
 
     public ImageStorageService(
-            @Value("${app.image.upload-dir:C:/VelnoraData/uploads}")
+            @Value("${app.image.upload-dir:./data/uploads}")
             String uploadDirectory) {
 
         this.uploadRoot = Paths.get(uploadDirectory)

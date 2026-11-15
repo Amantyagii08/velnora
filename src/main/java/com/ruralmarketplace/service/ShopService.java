@@ -25,6 +25,8 @@ import java.io.IOException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import com.ruralmarketplace.util.SearchText;
 
 @Service
 public class ShopService {
@@ -169,8 +171,9 @@ public Shop updateShop(
     
 
     @Transactional(readOnly = true)
-    public List<Shop> getAllShops() {
-        return shopRepository.findByApprovalStatusAndActiveTrue(ShopApprovalStatus.APPROVED);
+    public Page<Shop> getAllShops(int page, int size) {
+        return shopRepository.findByApprovalStatusAndActiveTrue(ShopApprovalStatus.APPROVED,
+                PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100), Sort.by("id").descending()));
     }
 
     
@@ -189,26 +192,20 @@ public Shop updateShop(
 
     
     @Transactional(readOnly = true)
-    public List<Shop> searchShops(String keyword) {
-
-        if (keyword == null || keyword.isBlank()) {
-            return getAllShops();
-        }
-
-        return shopRepository.findByNameContainingIgnoreCase(keyword.trim()).stream()
-                .filter(s -> s.getApprovalStatus() == ShopApprovalStatus.APPROVED && s.isActive()).toList();
+    public Page<Shop> searchShops(String keyword, int page, int size) {
+        String normalizedKeyword = SearchText.normalizeAndEscape(keyword, 100);
+        return shopRepository.searchPublicShops(ShopApprovalStatus.APPROVED, normalizedKeyword,
+                PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100)));
     }
 
     @Transactional(readOnly = true)
     public Page<Shop> searchPublicShops(String keyword, int page, int size) {
-        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
-        return shopRepository.searchPublicShops(ShopApprovalStatus.APPROVED, normalizedKeyword,
-                PageRequest.of(page, size));
+        return searchShops(keyword, page, size);
     }
 
     
     @Transactional(readOnly = true)
-    public List<Shop> getShopsByCategory(Long categoryId) {
+    public Page<Shop> getShopsByCategory(Long categoryId, int page, int size) {
 
         if (!categoryRepository.existsById(categoryId)) {
             throw new CategoryNotFoundException(
@@ -216,8 +213,8 @@ public Shop updateShop(
             );
         }
 
-        return shopRepository.findByCategory_Id(categoryId).stream()
-                .filter(s -> s.getApprovalStatus() == ShopApprovalStatus.APPROVED && s.isActive()).toList();
+        return shopRepository.findByCategory_IdAndApprovalStatusAndActiveTrue(categoryId,
+                ShopApprovalStatus.APPROVED, PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100)));
     }
 }
 

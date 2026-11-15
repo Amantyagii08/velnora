@@ -8,6 +8,8 @@ import com.ruralmarketplace.service.CategoryService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
+import com.ruralmarketplace.dto.CategoryResponse;
 
 
 @RestController
@@ -21,8 +23,9 @@ public class CategoryController {
     }
 
     @GetMapping
-    public List<Category> getAllCategories() {
-        return categoryService.getAllCategories();
+    public Page<CategoryResponse> getAllCategories(@RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return categoryService.getActiveCategories(page, size).map(CategoryResponse::from);
     }
 }
 

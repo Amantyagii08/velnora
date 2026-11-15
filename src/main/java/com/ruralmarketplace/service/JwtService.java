@@ -39,6 +39,7 @@ public class JwtService {
                 .claim("userId", user.getId())
                 .claim("role", user.getRole().name())
                 .claim("fullName", user.getFullName())
+                .claim("tokenVersion", user.getTokenVersion())
                 .build();
 
         return jwtEncoder.encode(

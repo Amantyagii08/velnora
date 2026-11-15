@@ -18,6 +18,8 @@ import com.ruralmarketplace.service.image.ImageStorageService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruralmarketplace.dto.UpdateProductRequest;
+import com.ruralmarketplace.dto.SetStockRequest;
+import com.ruralmarketplace.entity.StockAdjustment;
 
 
 import java.math.BigDecimal;
@@ -31,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 
 
 @Service
@@ -40,16 +43,25 @@ public class ProductService {
     private final ShopRepository shopRepository;
     private final ImageStorageService imageStorageService;
     private final UserRepository userRepository;
+    private final StockAdjustmentService stockAdjustmentService;
 
+    @Autowired
     public ProductService(
             ProductRepository productRepository,
             ShopRepository shopRepository,
             ImageStorageService imageStorageService,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            StockAdjustmentService stockAdjustmentService) {
         this.productRepository = productRepository;
         this.shopRepository = shopRepository;
         this.imageStorageService = imageStorageService;
         this.userRepository = userRepository;
+        this.stockAdjustmentService = stockAdjustmentService;
+    }
+
+    public ProductService(ProductRepository productRepository, ShopRepository shopRepository,
+            ImageStorageService imageStorageService, UserRepository userRepository) {
+        this(productRepository, shopRepository, imageStorageService, userRepository, null);
     }
 
     @Transactional
@@ -60,13 +72,14 @@ public class ProductService {
                 .orElseThrow(() -> new ShopNotFoundException(
                         "Shop not found with ID: " + shopId
                 ));
-        requireApprovedActiveOwner(shop, ownerEmail);
+        User owner = requireApprovedActiveOwner(shop, ownerEmail);
 
         Product product = new Product();
         product.setName(request.getName().trim());
         product.setDescription(request.getDescription());
         product.setBrand(request.getBrand());
         product.setVariant(request.getVariant());
+        setPackSize(product, request.getPackSizeValue(), request.getPackSizeUnit());
         product.setPrice(request.getPrice());
         product.setStockQuantity(request.getStockQuantity());
         product.setAvailable(true);
@@ -80,7 +93,11 @@ public class ProductService {
 
 
 
-        return productRepository.save(product);
+        Product saved = productRepository.save(product);
+        if (stockAdjustmentService != null) {
+            stockAdjustmentService.record(saved, owner, 0, saved.getStockQuantity(), "INITIAL_STOCK");
+        }
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -93,6 +110,17 @@ public class ProductService {
 
         if (shop.getApprovalStatus() != ShopApprovalStatus.APPROVED || !shop.isActive()) throw new ShopNotFoundException("Shop not found with ID: " + shopId);
         return productRepository.findByShop_Id(shop.getId()).stream().filter(Product::isActive).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Product> getProductsByShop(Long shopId, int page, int size) {
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new ShopNotFoundException("Shop not found with ID: " + shopId));
+        if (shop.getApprovalStatus() != ShopApprovalStatus.APPROVED || !shop.isActive()) {
+            throw new ShopNotFoundException("Shop not found with ID: " + shopId);
+        }
+        return productRepository.findByShop_IdAndActiveTrue(shopId,
+                PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100)));
     }
 
     @Transactional(readOnly = true)
@@ -139,6 +167,7 @@ public Product updateProduct(
     product.setDescription(request.getDescription());
     product.setBrand(request.getBrand());
     product.setVariant(request.getVariant());
+    setPackSize(product, request.getPackSizeValue(), request.getPackSizeUnit());
     product.setPrice(request.getPrice());
 
     if (Boolean.TRUE.equals(product.getDiscountActive())
@@ -167,31 +196,18 @@ public Product updateProduct(
 
 
     @Transactional(readOnly = true)
-    public List<Product> searchProducts(String keyword) {
-
-        if (keyword == null || keyword.isBlank()) {
-        return productRepository.findAll().stream()
-                .filter(Product::isActive)
-                .filter(p -> p.getShop().getApprovalStatus() == ShopApprovalStatus.APPROVED && p.getShop().isActive())
-                .toList();
-        }
-
-        return productRepository.findByNameContainingIgnoreCase(keyword.trim()).stream()
-                .filter(Product::isActive)
-                .filter(p -> p.getShop().getApprovalStatus() == ShopApprovalStatus.APPROVED && p.getShop().isActive())
-                .toList();
+    public Page<Product> searchProducts(String keyword, int page, int size) {
+        return productRepository.searchPublicProducts(ShopApprovalStatus.APPROVED,
+                normalizeSearchKeyword(keyword), PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100)));
     }
 
     @Transactional(readOnly = true)
     public Page<Product> searchPublicProducts(String keyword, int page, int size) {
-        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
-        return productRepository.searchPublicProducts(ShopApprovalStatus.APPROVED, normalizedKeyword,
-                PageRequest.of(page, size));
+        return searchProducts(keyword, page, size);
     }
 
     @Transactional(readOnly = true)
-    public List<Product> searchProductsByShop(
-            Long shopId, String keyword) {
+    public Page<Product> searchProductsByShop(Long shopId, String keyword, int page, int size) {
 
         Shop shop = shopRepository.findById(shopId)
                 .orElseThrow(() -> new ShopNotFoundException(
@@ -202,11 +218,8 @@ public Product updateProduct(
             throw new ShopNotFoundException("Shop not found with ID: " + shopId);
         }
 
-        if (keyword == null || keyword.isBlank()) {
-            return productRepository.findByShop_Id(shop.getId()).stream().filter(Product::isActive).toList();
-        }
-
-        return productRepository.findByShop_IdAndNameContainingIgnoreCase(shop.getId(), keyword.trim()).stream().filter(Product::isActive).toList();
+        return productRepository.searchPublicProductsByShop(shop.getId(), ShopApprovalStatus.APPROVED,
+                normalizeSearchKeyword(keyword), PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100)));
     }
 
      
@@ -282,12 +295,54 @@ public Product addStock(Long shopId, Long productId, AddStockRequest request, St
         throw new IllegalStateException("Product stock has not been initialized");
     }
     try {
-        product.setStockQuantity(Math.addExact(product.getStockQuantity(), request.getQuantity()));
+        int previousQuantity = product.getStockQuantity();
+        product.setStockQuantity(Math.addExact(previousQuantity, request.getQuantity()));
+        Product saved = productRepository.save(product);
+        if (stockAdjustmentService != null) {
+            User actor = userRepository.findByEmail(ownerEmail).orElseThrow(() -> new com.ruralmarketplace.exception.ResourceNotFoundException("User not found"));
+            stockAdjustmentService.record(saved, actor, previousQuantity, saved.getStockQuantity(), "RESTOCK");
+        }
+        return saved;
     } catch (ArithmeticException ex) {
         throw new IllegalArgumentException("Stock quantity exceeds the supported limit", ex);
     }
+}
 
-    return productRepository.save(product);
+@Transactional
+public Product setStock(Long shopId, Long productId, SetStockRequest request, String ownerEmail) {
+    Shop shop = shopRepository.findById(shopId)
+            .orElseThrow(() -> new ShopNotFoundException("Shop not found with ID: " + shopId));
+    requireApprovedActiveOwner(shop, ownerEmail);
+    Product product = productRepository.findByIdForUpdate(productId)
+            .orElseThrow(() -> new ProductNotFoundException("Product not found with ID: " + productId));
+    if (!product.getShop().getId().equals(shopId)) {
+        throw new ProductNotFoundException("Product not found in shop with ID: " + shopId);
+    }
+    int previousQuantity = product.getStockQuantity();
+    product.setStockQuantity(request.getQuantity());
+    Product saved = productRepository.save(product);
+    if (stockAdjustmentService != null) {
+        User actor = userRepository.findByEmail(ownerEmail)
+                .orElseThrow(() -> new com.ruralmarketplace.exception.ResourceNotFoundException("User not found"));
+        String reason = request.getReason() == null || request.getReason().isBlank()
+                ? "MANUAL_SET" : request.getReason().trim();
+        stockAdjustmentService.record(saved, actor, previousQuantity, saved.getStockQuantity(), reason);
+    }
+    return saved;
+}
+
+@Transactional(readOnly = true)
+public Page<StockAdjustment> getStockHistory(Long shopId, Long productId, String ownerEmail,
+        int page, int size) {
+    Shop shop = shopRepository.findById(shopId)
+            .orElseThrow(() -> new ShopNotFoundException("Shop not found with ID: " + shopId));
+    requireApprovedActiveOwner(shop, ownerEmail);
+    Product product = productRepository.findById(productId)
+            .orElseThrow(() -> new ProductNotFoundException("Product not found with ID: " + productId));
+    if (!product.getShop().getId().equals(shopId)) {
+        throw new ProductNotFoundException("Product not found in shop with ID: " + shopId);
+    }
+    return stockAdjustmentService.history(productId, PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100)));
 }
 
 @Transactional
@@ -350,6 +405,10 @@ public Product setClearance(Long shopId, Long productId, BigDecimal amount, java
     if (shop.getApprovalStatus() != ShopApprovalStatus.APPROVED || !shop.isActive()) throw new IllegalArgumentException("Shop is not active and approved");
     Product product = productRepository.findByIdForUpdate(productId).orElseThrow(() -> new ProductNotFoundException("Product not found with ID: " + productId));
     if (!product.getShop().getId().equals(shop.getId())) throw new ProductNotFoundException("Product not found in shop with ID: " + shopId);
+    if (!product.isActive() || !product.isManuallyAvailable() || product.getStockQuantity() == null
+            || product.getStockQuantity() <= 0) {
+        throw new IllegalArgumentException("Clearance deals require an active, available product with stock");
+    }
     BigDecimal alreadyDiscountedPrice = Boolean.TRUE.equals(product.getDiscountActive())
             ? product.getPrice().subtract(product.getDiscountAmount()) : product.getPrice();
     if (amount == null || amount.signum() <= 0 || amount.compareTo(alreadyDiscountedPrice) >= 0) throw new IllegalArgumentException("Clearance discount must be positive and less than the current product price");
@@ -381,47 +440,71 @@ public List<Product> getClearanceDeals() {
 public List<Product> getClearanceDeals(int limit) {
     int boundedLimit = Math.max(1, Math.min(limit, 50));
     return productRepository.findPublicClearanceDeals(ShopApprovalStatus.APPROVED,
-            org.springframework.data.domain.PageRequest.of(0, boundedLimit));
+            org.springframework.data.domain.PageRequest.of(0, boundedLimit)).getContent();
 }
 
 @Transactional(readOnly = true)
-public List<Product> getShopClearanceDeals(Long shopId, String ownerEmail) {
+public Page<Product> getClearanceDealsPage(int page, int size) {
+    return productRepository.findPublicClearanceDeals(ShopApprovalStatus.APPROVED,
+            PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100)));
+}
+
+@Transactional(readOnly = true)
+public Page<Product> getShopClearanceDeals(Long shopId, String ownerEmail, int page, int size) {
     Shop shop = shopRepository.findById(shopId)
             .orElseThrow(() -> new ShopNotFoundException("Shop not found with ID: " + shopId));
     requireApprovedActiveOwner(shop, ownerEmail);
-    return productRepository.findByShop_Id(shopId).stream()
-            .filter(Product::isActive)
-            .filter(Product::hasActiveClearance)
-            .toList();
+    return productRepository.findPublicClearanceDealsByShop(shopId, ShopApprovalStatus.APPROVED,
+            PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100)));
 }
 
 @Transactional(readOnly = true)
-public List<Map<String, Object>> compareProducts(String brand, String variant) {
-    return productRepository.findAll().stream()
-            .filter(Product::isActive)
-            .filter(p -> p.getShop().isActive() && p.getShop().getApprovalStatus() == ShopApprovalStatus.APPROVED)
-            .filter(p -> p.getBrand() != null && p.getBrand().equalsIgnoreCase(brand.trim()))
-            .filter(p -> p.getVariant() != null && p.getVariant().equalsIgnoreCase(variant.trim()))
-            .map(p -> {
-                Map<String, Object> result = new LinkedHashMap<>();
-                result.put("productId", p.getId()); result.put("productName", p.getName()); result.put("brand", p.getBrand());
-                result.put("variant", p.getVariant()); result.put("shopId", p.getShop().getId()); result.put("shopName", p.getShop().getName());
-                result.put("originalPrice", p.getPrice()); result.put("discountedPrice", p.getCurrentPrice()); result.put("available", Boolean.TRUE.equals(p.getAvailable()) && p.getStockQuantity() > 0);
-                return result;
-            }).sorted((a, b) -> ((BigDecimal) a.get("discountedPrice")).compareTo((BigDecimal) b.get("discountedPrice")))
-            .toList();
+public Page<Product> compareProducts(String brand, String name, String variant, BigDecimal packSizeValue,
+        String packSizeUnit, int page, int size) {
+    if (brand == null || brand.isBlank() || name == null || name.isBlank() || variant == null
+            || variant.isBlank() || packSizeValue == null || packSizeUnit == null || packSizeUnit.isBlank()) {
+        throw new IllegalArgumentException("Brand, product name, variant, pack size value, and pack size unit are required for comparison");
+    }
+    if (brand.length() > 100 || name.length() > 100 || variant.length() > 100 || packSizeUnit.length() > 20) {
+        throw new IllegalArgumentException("Comparison values exceed the allowed length");
+    }
+    return productRepository.findComparableProducts(ShopApprovalStatus.APPROVED, brand.trim(), name.trim(),
+            variant.trim(), packSizeValue, packSizeUnit.trim(),
+            PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100)));
 }
 
-private void requireOwner(Shop shop, String email) {
+private String normalizeSearchKeyword(String keyword) {
+    if (keyword == null || keyword.isBlank()) return null;
+    if (keyword.length() > 100) throw new IllegalArgumentException("Search keyword cannot exceed 100 characters");
+    return keyword.trim().toLowerCase(java.util.Locale.ROOT)
+            .replace("!", "!!").replace("%", "!%").replace("_", "!_");
+}
+
+private User requireOwner(Shop shop, String email) {
     User user = userRepository.findByEmail(email).orElseThrow(() -> new com.ruralmarketplace.exception.ResourceNotFoundException("User not found"));
     if (shop.getOwner() == null || !shop.getOwner().getId().equals(user.getId())) throw new AccessDeniedException("You can only manage your own shop");
+    return user;
 }
 
-private void requireApprovedActiveOwner(Shop shop, String email) {
-    requireOwner(shop, email);
+private User requireApprovedActiveOwner(Shop shop, String email) {
+    User owner = requireOwner(shop, email);
     if (shop.getApprovalStatus() != ShopApprovalStatus.APPROVED || !shop.isActive()) {
         throw new AccessDeniedException("Only approved active shops can manage products");
     }
+    return owner;
+}
+
+private void setPackSize(Product product, BigDecimal value, String unit) {
+    if ((value == null) != (unit == null || unit.isBlank())) {
+        throw new IllegalArgumentException("Pack size value and unit must be provided together");
+    }
+    if (value == null) {
+        product.setPackSizeValue(null);
+        product.setPackSizeUnit(null);
+        return;
+    }
+    product.setPackSizeValue(value.stripTrailingZeros());
+    product.setPackSizeUnit(unit.trim().toLowerCase(java.util.Locale.ROOT));
 }
 
 @Transactional
@@ -450,13 +533,15 @@ public Product removeDiscount(Long shopId, Long productId, String ownerEmail) {
     return productRepository.save(product);
 }
 
-public List<Product> filterAndSortProducts(
+public Page<Product> filterAndSortProducts(
         Long shopId,
         BigDecimal minPrice,
         BigDecimal maxPrice,
         Boolean available,
         boolean discountedOnly,
-        String sortBy) {
+        String sortBy,
+        int page,
+        int size) {
 
    
     if (minPrice != null && minPrice.compareTo(BigDecimal.ZERO) < 0) {
@@ -500,15 +585,15 @@ public List<Product> filterAndSortProducts(
     }
 
     return productRepository.findProductsWithFilters(
+            ShopApprovalStatus.APPROVED,
             shopId,
             minPrice,
             maxPrice,
             available,
             discountedOnly,
-            effectiveSortBy
-    ).stream().filter(Product::isActive)
-            .filter(p -> p.getShop().isActive() && p.getShop().getApprovalStatus() == ShopApprovalStatus.APPROVED)
-            .toList();
+            effectiveSortBy,
+            PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100))
+    );
 }
 
 

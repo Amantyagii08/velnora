@@ -30,6 +30,15 @@ public class Product {
     @Size(max = 100, message = "Variant must not exceed 100 characters")
     private String variant;
 
+    @Column(precision = 12, scale = 3)
+    private BigDecimal packSizeValue;
+
+    @Column(length = 20)
+    private String packSizeUnit;
+
+    @Version
+    private long version;
+
     @NotNull(message = "Price is required")
     @DecimalMin(value = "0.01", message = "Price must be greater than zero")
     private BigDecimal price;
@@ -83,6 +92,11 @@ public class Product {
     public void setVariant(String variant) {
         this.variant = variant;
     }
+
+    public BigDecimal getPackSizeValue() { return packSizeValue; }
+    public void setPackSizeValue(BigDecimal packSizeValue) { this.packSizeValue = packSizeValue; }
+    public String getPackSizeUnit() { return packSizeUnit; }
+    public void setPackSizeUnit(String packSizeUnit) { this.packSizeUnit = packSizeUnit; }
 
     public BigDecimal getPrice() {
         return price;

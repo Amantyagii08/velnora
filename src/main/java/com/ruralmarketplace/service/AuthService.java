@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ruralmarketplace.dto.auth.AuthResponse;
 import com.ruralmarketplace.dto.auth.LoginRequest;
 import com.ruralmarketplace.dto.auth.RegisterRequest;
+import com.ruralmarketplace.dto.ChangePasswordRequest;
 import com.ruralmarketplace.entity.User;
 import com.ruralmarketplace.entity.UserRole;
 import com.ruralmarketplace.repository.UserRepository;
@@ -92,6 +93,12 @@ public class AuthService {
         String attemptKey = email + "|" + clientAddress;
         loginAttemptService.checkAllowed(attemptKey);
 
+        User existingUser = userRepository.findByEmail(email).orElse(null);
+        if (existingUser != null && existingUser.isSuspended()) {
+            loginAttemptService.recordFailure(attemptKey);
+            throw new org.springframework.security.authentication.DisabledException("Account is suspended");
+        }
+
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(email, request.getPassword()));
@@ -120,5 +127,28 @@ public class AuthService {
                 user.getEmail(),
                 user.getRole().name()
         );
+    }
+
+    @Transactional
+    public void logout(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Account no longer exists"));
+        user.incrementTokenVersion();
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void changePassword(String email, ChangePasswordRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Account no longer exists"));
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("New password must be different from the current password");
+        }
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.incrementTokenVersion();
+        userRepository.save(user);
     }
 }

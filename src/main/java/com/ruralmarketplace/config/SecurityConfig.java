@@ -121,6 +121,10 @@ public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
             User user = userRepository.findByEmail(jwt.getSubject())
                     .orElseThrow(() -> new BadCredentialsException("Account no longer exists"));
             if (!user.isEnabled()) throw new DisabledException("Account is disabled or suspended");
+            Integer tokenVersion = jwt.getClaimAsInt("tokenVersion");
+            if (tokenVersion != null && tokenVersion != user.getTokenVersion()) {
+                throw new BadCredentialsException("Token has been revoked");
+            }
             return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
         });
 
@@ -150,6 +154,7 @@ public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
                 ) || path.equals("/api/categories") || path.startsWith("/api/categories/"
                 ) || path.startsWith("/api/products/") || path.equals("/api/clearance-deals")) return true;
         if (path.equals("/api/shops") || path.equals("/api/shops/search")
+                || path.equals("/api/shops/search/page")
                 || path.startsWith("/api/shops/category/")) return true;
         if (path.matches("/api/shops/[0-9]+")
                 || path.matches("/api/shops/[0-9]+/products(?:/search)?")) return true;
@@ -192,7 +197,7 @@ public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
         return (request, response, exception) -> {
             response.setStatus(401);
             response.setContentType("application/json");
-            response.getWriter().write("{\"message\":\"Authentication required or token invalid\"}");
+            response.getWriter().write("{\"status\":401,\"message\":\"Authentication required or token invalid\",\"errors\":{}}");
         };
     }
 
@@ -200,7 +205,7 @@ public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
         return (request, response, exception) -> {
             response.setStatus(403);
             response.setContentType("application/json");
-            response.getWriter().write("{\"message\":\"You do not have permission to perform this action\"}");
+            response.getWriter().write("{\"status\":403,\"message\":\"You do not have permission to perform this action\",\"errors\":{}}");
         };
     }
 }

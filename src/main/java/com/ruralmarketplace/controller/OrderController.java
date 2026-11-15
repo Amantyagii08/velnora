@@ -15,6 +15,9 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -42,10 +45,12 @@ public class OrderController {
 
     @GetMapping("/shop/{shopId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SHOPKEEPER')")
-    public List<OrderResponse> getOrdersByShop(
-            @PathVariable Long shopId, @AuthenticationPrincipal Jwt jwt) {
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getOrdersByShop(@PathVariable Long shopId,
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        return orderService.getOrdersByShop(shopId, jwt.getSubject()).stream().map(OrderResponse::new).toList();
+        return orderService.getOrdersByShop(shopId, jwt.getSubject(), pageRequest(page, size)).map(OrderResponse::new);
     }
 
     @PatchMapping("/{orderId}/status")
@@ -61,10 +66,11 @@ public class OrderController {
     
 @GetMapping("/my-orders")
 @PreAuthorize("hasRole('CUSTOMER')")
-public List<OrderResponse> getMyOrders(
-        @AuthenticationPrincipal Jwt jwt) {
+@Transactional(readOnly = true)
+public Page<OrderResponse> getMyOrders(@RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size, @AuthenticationPrincipal Jwt jwt) {
 
-    return orderService.getMyOrders(jwt.getSubject()).stream().map(OrderResponse::new).toList();
+    return orderService.getMyOrders(jwt.getSubject(), pageRequest(page, size)).map(OrderResponse::new);
 }
 
 @GetMapping("/{orderId}")
@@ -81,9 +87,15 @@ public OrderResponse getOrderById(
 
 @GetMapping("/my-shop-orders")
 @PreAuthorize("hasRole('SHOPKEEPER')")
-public List<OrderResponse> getMyShopOrders(@AuthenticationPrincipal Jwt jwt) {
-    return orderService.getMyShopOrders(jwt.getSubject()).stream().map(OrderResponse::new).toList();
+@Transactional(readOnly = true)
+public Page<OrderResponse> getMyShopOrders(@RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "20") int size, @AuthenticationPrincipal Jwt jwt) {
+    return orderService.getMyShopOrders(jwt.getSubject(), pageRequest(page, size)).map(OrderResponse::new);
 }
+
+    private PageRequest pageRequest(int page, int size) {
+        return PageRequest.of(Math.max(0, page), Math.clamp(size, 1, 100));
+    }
 
 @GetMapping("/my-shop-orders/{orderId}")
 @PreAuthorize("hasRole('SHOPKEEPER')")

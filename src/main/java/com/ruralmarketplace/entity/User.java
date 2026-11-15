@@ -51,6 +51,9 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private boolean suspended = false;
 
+    @Column(nullable = false)
+    private int tokenVersion = 0;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -151,6 +154,8 @@ public class User implements UserDetails {
 
     public boolean isSuspended() { return suspended; }
     public void setSuspended(boolean suspended) { this.suspended = suspended; }
+    public int getTokenVersion() { return tokenVersion; }
+    public void incrementTokenVersion() { tokenVersion++; }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;

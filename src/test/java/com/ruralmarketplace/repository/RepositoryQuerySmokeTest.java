@@ -44,7 +44,8 @@ class RepositoryQuerySmokeTest {
 
     @Test
     void publicCatalogAndHomepageQueriesRunAgainstAnEmptyDatabase() {
-        assertTrue(products.findProductsWithFilters(null, null, null, null, false, "DEFAULT").isEmpty());
+        assertTrue(products.findProductsWithFilters(ShopApprovalStatus.APPROVED, null, null, null, null,
+                false, "DEFAULT", PageRequest.of(0, 8)).isEmpty());
         assertTrue(products.searchPublicProducts(ShopApprovalStatus.APPROVED, "bread",
                 PageRequest.of(0, 8)).isEmpty());
         assertTrue(products.searchAllProducts(null, PageRequest.of(0, 8)).isEmpty());

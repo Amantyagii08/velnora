@@ -24,6 +24,8 @@ import com.ruralmarketplace.repository.ProductRepository;
 import com.ruralmarketplace.repository.ShopRepository;
 import com.ruralmarketplace.repository.UserRepository;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.ruralmarketplace.exception.ResourceNotFoundException;
 
 @Service
@@ -34,19 +36,22 @@ public class OrderService {
     private final ShopRepository shopRepository;
     private final UserRepository userRepository;
     private final EntityManager entityManager;
+    private final StockAdjustmentService stockAdjustmentService;
 
     public OrderService(
             OrderRepository orderRepository,
             ProductRepository productRepository,
             ShopRepository shopRepository,
             UserRepository userRepository,
-            EntityManager entityManager) {
+            EntityManager entityManager,
+            StockAdjustmentService stockAdjustmentService) {
 
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.shopRepository = shopRepository;
         this.userRepository = userRepository;
         this.entityManager = entityManager;
+        this.stockAdjustmentService = stockAdjustmentService;
     }
 
     @Transactional
@@ -152,8 +157,10 @@ public class OrderService {
             orderItems.add(orderItem);
             total = total.add(subtotal);
 
-            product.setStockQuantity(
-                    product.getStockQuantity() - quantity);
+            int previousQuantity = product.getStockQuantity();
+            product.setStockQuantity(previousQuantity - quantity);
+            stockAdjustmentService.record(product, customer, previousQuantity,
+                    product.getStockQuantity(), "ORDER_PLACED");
 
         }
 
@@ -183,6 +190,23 @@ public class OrderService {
             throw new AccessDeniedException("Shop orders are available only for approved active shops");
         }
         return orderRepository.findByShop_IdOrderByCreatedAtDesc(shopId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Order> getOrdersByShop(Long shopId, String actorEmail, Pageable pageable) {
+        if (!shopRepository.existsById(shopId)) throw new ResourceNotFoundException("Shop not found: " + shopId);
+        User actor = userRepository.findByEmail(actorEmail).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        Shop shop = shopRepository.findById(shopId).orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
+        if (actor.getRole() != com.ruralmarketplace.entity.UserRole.ADMIN
+                && (actor.getRole() != com.ruralmarketplace.entity.UserRole.SHOPKEEPER
+                || shop.getOwner() == null || !shop.getOwner().getId().equals(actor.getId()))) {
+            throw new AccessDeniedException("You can only view orders for your own shop");
+        }
+        if (actor.getRole() == com.ruralmarketplace.entity.UserRole.SHOPKEEPER
+                && (shop.getApprovalStatus() != ShopApprovalStatus.APPROVED || !shop.isActive())) {
+            throw new AccessDeniedException("Shop orders are available only for approved active shops");
+        }
+        return orderRepository.findByShop_IdOrderByCreatedAtDesc(shopId, pageable);
     }
 
     
@@ -248,7 +272,10 @@ public class OrderService {
             for (OrderItem item : items) {
                 Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Ordered product no longer exists"));
-                product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
+                int previousQuantity = product.getStockQuantity();
+                product.setStockQuantity(Math.addExact(previousQuantity, item.getQuantity()));
+                stockAdjustmentService.record(product, actor, previousQuantity,
+                        product.getStockQuantity(), "ORDER_CANCELLED");
             }
         }
 
@@ -273,6 +300,16 @@ public List<Order> getMyOrders(String customerEmail) {
 
     return orderRepository
             .findByCustomer_EmailOrderByCreatedAtDesc(customerEmail);
+}
+
+@Transactional(readOnly = true)
+public Page<Order> getMyOrders(String customerEmail, Pageable pageable) {
+    User customer = userRepository.findByEmail(customerEmail)
+            .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+    if (customer.getRole() != com.ruralmarketplace.entity.UserRole.CUSTOMER) {
+        throw new IllegalArgumentException("Only customers can access customer order history");
+    }
+    return orderRepository.findByCustomer_EmailOrderByCreatedAtDesc(customerEmail, pageable);
 }
 
 private void initializeOrderResponseFields(Order order) {
@@ -300,6 +337,17 @@ public List<Order> getMyShopOrders(String email) {
         throw new AccessDeniedException("Shop orders are available only for approved active shops");
     }
     return orderRepository.findByShop_IdOrderByCreatedAtDesc(shop.getId());
+}
+
+@Transactional(readOnly = true)
+public Page<Order> getMyShopOrders(String email, Pageable pageable) {
+    User owner = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("Shopkeeper not found"));
+    if (owner.getRole() != com.ruralmarketplace.entity.UserRole.SHOPKEEPER) throw new IllegalArgumentException("Only shopkeepers can access shop orders");
+    Shop shop = shopRepository.findByOwner_Id(owner.getId()).orElseThrow(() -> new ResourceNotFoundException("No shop application found"));
+    if (shop.getApprovalStatus() != ShopApprovalStatus.APPROVED || !shop.isActive()) {
+        throw new AccessDeniedException("Shop orders are available only for approved active shops");
+    }
+    return orderRepository.findByShop_IdOrderByCreatedAtDesc(shop.getId(), pageable);
 }
 
 @Transactional(readOnly = true)

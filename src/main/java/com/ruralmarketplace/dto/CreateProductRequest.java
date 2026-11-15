@@ -24,6 +24,13 @@ public class CreateProductRequest {
     @Size(max = 100, message = "Variant must not exceed 100 characters")
     private String variant;
 
+    @jakarta.validation.constraints.DecimalMin(value = "0.001", message = "Pack size must be positive")
+    @jakarta.validation.constraints.Digits(integer = 9, fraction = 3)
+    private BigDecimal packSizeValue;
+
+    @Size(max = 20, message = "Pack size unit must not exceed 20 characters")
+    private String packSizeUnit;
+
     @NotNull(message = "Price is required")
     @DecimalMin(value = "0.01", message = "Price must be greater than zero")
     private BigDecimal price;
@@ -66,6 +73,11 @@ public class CreateProductRequest {
     public void setVariant(String variant) {
         this.variant = variant;
     }
+
+    public BigDecimal getPackSizeValue() { return packSizeValue; }
+    public void setPackSizeValue(BigDecimal packSizeValue) { this.packSizeValue = packSizeValue; }
+    public String getPackSizeUnit() { return packSizeUnit; }
+    public void setPackSizeUnit(String packSizeUnit) { this.packSizeUnit = packSizeUnit; }
 
     public BigDecimal getPrice() {
         return price;

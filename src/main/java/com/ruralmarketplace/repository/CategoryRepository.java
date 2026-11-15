@@ -2,7 +2,10 @@ package com.ruralmarketplace.repository;
 import com.ruralmarketplace.entity.Category;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface CategoryRepository extends JpaRepository<Category,Long> {
     List<Category> findByActiveTrue();
+    Page<Category> findByActiveTrue(Pageable pageable);
 }
