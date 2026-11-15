@@ -42,4 +42,5 @@ build/
 
 # Database backups
 *.sql
+!src/main/resources/db/manual/*.sql
 *.dump

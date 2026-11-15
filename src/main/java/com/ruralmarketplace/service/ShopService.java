@@ -68,6 +68,9 @@ public class ShopService {
                         "Category not found with ID: "
                                 + request.getCategoryId()
                 ));
+        if (!category.isActive()) {
+            throw new IllegalArgumentException("Choose an active category");
+        }
 
         User owner = userRepository.findByEmail(ownerEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("Shopkeeper account not found"));
@@ -88,6 +91,7 @@ public class ShopService {
         shop.setCategory(category);
         shop.setOwner(owner);
         shop.setApprovalStatus(ShopApprovalStatus.PENDING);
+        shop.setRejectionReason(null);
 
         if(image != null && !image.isEmpty()){
             String imagePath = imageStorageService.storeImage(image,"shops");
@@ -123,6 +127,15 @@ public Shop updateShop(
                     new CategoryNotFoundException(
                             "Category not found with ID: "
                                     + request.getCategoryId()));
+    if (!category.isActive()) {
+        throw new IllegalArgumentException("Choose an active category");
+    }
+
+    boolean requiresReapproval = shop.getApprovalStatus() == ShopApprovalStatus.REJECTED
+            || !shop.getName().equals(request.getName().trim())
+            || !shop.getAddress().equals(request.getAddress().trim())
+            || !java.util.Objects.equals(shop.getDescription(), request.getDescription())
+            || !java.util.Objects.equals(shop.getCategory().getId(), category.getId());
 
     shop.setName(request.getName().trim());
     shop.setDescription(request.getDescription());
@@ -138,7 +151,10 @@ public Shop updateShop(
         shop.setImagePath(imagePath);
     }
 
-    shop.setApprovalStatus(ShopApprovalStatus.PENDING);
+    if (requiresReapproval) {
+        shop.setApprovalStatus(ShopApprovalStatus.PENDING);
+        shop.setRejectionReason(null);
+    }
 
     Shop savedShop = shopRepository.save(shop);
     if (image != null && !image.isEmpty() && oldImagePath != null

@@ -38,7 +38,8 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResponse register(RegisterRequest request, String clientAddress) {
+        loginAttemptService.checkRegistrationAllowedAndRecord(clientAddress);
 
         String email = request.getEmail().trim().toLowerCase();
         if (userRepository.existsByEmail(email)) {
@@ -91,10 +92,6 @@ public class AuthService {
         String attemptKey = email + "|" + clientAddress;
         loginAttemptService.checkAllowed(attemptKey);
 
-        userRepository.findByEmail(email).filter(User::isSuspended).ifPresent(user -> {
-            throw new org.springframework.security.authentication.DisabledException("This account is suspended");
-        });
-
         try {
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(email, request.getPassword()));
@@ -108,6 +105,10 @@ public class AuthService {
                 .orElseThrow(() ->
                         new IllegalArgumentException("User not found")
                 );
+
+        if (!user.isEnabled()) {
+            throw new org.springframework.security.authentication.DisabledException("Account is disabled");
+        }
 
         String token = jwtService.generateToken(user);
 

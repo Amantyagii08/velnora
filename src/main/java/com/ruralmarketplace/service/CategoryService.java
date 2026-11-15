@@ -5,6 +5,7 @@ import com.ruralmarketplace.entity.Category;
 import com.ruralmarketplace.dto.CategoryRequest;
 import com.ruralmarketplace.repository.CategoryRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.ruralmarketplace.service.image.ImageStorageService;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +26,7 @@ public class CategoryService {
         this.imageStorageService = imageStorageService;
     }
 
+    @Transactional
     public Category createCategory(CategoryRequest request, MultipartFile image)throws IOException {
         Category category = new Category();
         category.setName(request.getName().trim());

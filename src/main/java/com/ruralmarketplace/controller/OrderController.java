@@ -85,6 +85,12 @@ public List<OrderResponse> getMyShopOrders(@AuthenticationPrincipal Jwt jwt) {
     return orderService.getMyShopOrders(jwt.getSubject()).stream().map(OrderResponse::new).toList();
 }
 
+@GetMapping("/my-shop-orders/{orderId}")
+@PreAuthorize("hasRole('SHOPKEEPER')")
+public OrderResponse getMyShopOrderById(@PathVariable Long orderId, @AuthenticationPrincipal Jwt jwt) {
+    return new OrderResponse(orderService.getMyShopOrderById(orderId, jwt.getSubject()));
+}
+
     public static class OrderResponse {
         private final Long id, shopId;
         private final String shopName, shopContactPhone, shopContactEmail, customerName, customerPhone, fulfillmentType, deliveryAddress, status;

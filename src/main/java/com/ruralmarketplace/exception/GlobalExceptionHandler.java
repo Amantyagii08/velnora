@@ -10,6 +10,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import com.ruralmarketplace.exception.LoginRateLimitException;
 
 import java.util.HashMap;
@@ -27,12 +32,34 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Map<String, String>> handleAuthentication(AuthenticationException ex) {
         Map<String, String> error = new HashMap<>();
-        if (ex instanceof DisabledException) {
-            error.put("message", "This account is suspended or disabled");
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
-        }
         error.put("message", "Invalid email or password");
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler({HttpMessageNotReadableException.class, MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<Map<String, String>> handleMalformedRequest(Exception ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("message", "The request contains invalid or missing values");
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
+        Map<String, String> error = new HashMap<>(); error.put("message", "Uploaded file exceeds the allowed size");
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(error);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<Map<String, String>> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
+        Map<String, String> error = new HashMap<>(); error.put("message", "Unsupported request content type");
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(error);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, String>> handleUnexpectedException(Exception ex) {
+        Map<String, String> error = new HashMap<>(); error.put("message", "An unexpected server error occurred");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 
     @ExceptionHandler(LoginRateLimitException.class)

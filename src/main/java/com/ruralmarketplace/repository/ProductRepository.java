@@ -11,6 +11,9 @@ import org.springframework.data.jpa.repository.EntityGraph;
 
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.ruralmarketplace.entity.ShopApprovalStatus;
 
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
@@ -32,6 +35,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     List<Product> findByShop_IdAndNameContainingIgnoreCase(
             Long shopId, String keyword);
+
+    @Query("SELECT p FROM Product p JOIN p.shop s WHERE p.active = true AND s.active = true "
+            + "AND s.approvalStatus = :approved ORDER BY p.id DESC")
+    Page<Product> findPublicProducts(@Param("approved") ShopApprovalStatus approved, Pageable pageable);
+
+    @Query("SELECT p FROM Product p JOIN p.shop s WHERE p.active = true AND s.active = true "
+            + "AND s.approvalStatus = :approved AND (p.discountActive = true OR "
+            + "(p.clearanceActive = true AND (p.clearanceExpiresAt IS NULL OR p.clearanceExpiresAt > CURRENT_TIMESTAMP))) "
+            + "ORDER BY p.id DESC")
+    Page<Product> findPublicDiscountedProducts(@Param("approved") ShopApprovalStatus approved, Pageable pageable);
+
+    @Query("SELECT p FROM Product p JOIN p.shop s WHERE p.active = true AND s.active = true "
+            + "AND s.approvalStatus = :approved AND p.available = true AND p.stockQuantity > 0 "
+            + "AND p.clearanceActive = true "
+            + "AND (p.clearanceExpiresAt IS NULL OR p.clearanceExpiresAt > CURRENT_TIMESTAMP) "
+            + "ORDER BY p.id DESC")
+    List<Product> findPublicClearanceDeals(@Param("approved") ShopApprovalStatus approved, Pageable pageable);
 
             @Query("""
     SELECT p FROM Product p

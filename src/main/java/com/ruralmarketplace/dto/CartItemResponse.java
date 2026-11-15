@@ -14,6 +14,7 @@ public class CartItemResponse {
     private final Integer stockQuantity;
     private final BigDecimal unitPrice;
     private final BigDecimal subtotal;
+    private final boolean available;
 
     public CartItemResponse(CartItem item) {
         var product = item.getProduct();
@@ -22,10 +23,15 @@ public class CartItemResponse {
         quantity = item.getQuantity(); stockQuantity = product.getStockQuantity();
         unitPrice = product.getCurrentPrice();
         subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
+        available = product.isActive() && product.isManuallyAvailable()
+                && stockQuantity != null && stockQuantity > 0
+                && product.getShop().isActive()
+                && product.getShop().getApprovalStatus() == com.ruralmarketplace.entity.ShopApprovalStatus.APPROVED;
     }
     public Long getId() { return id; } public Long getProductId() { return productId; }
     public String getProductName() { return productName; } public String getImagePath() { return imagePath; }
     public String getBrand() { return brand; } public String getVariant() { return variant; }
     public Integer getQuantity() { return quantity; } public Integer getStockQuantity() { return stockQuantity; }
     public BigDecimal getUnitPrice() { return unitPrice; } public BigDecimal getSubtotal() { return subtotal; }
+    public boolean isAvailable() { return available; }
 }

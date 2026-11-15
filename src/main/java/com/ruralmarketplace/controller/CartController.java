@@ -11,6 +11,7 @@ import com.ruralmarketplace.dto.AddCartItemRequest;
 import com.ruralmarketplace.dto.CartCheckoutRequest;
 import com.ruralmarketplace.entity.CartItem;
 import com.ruralmarketplace.dto.CartItemResponse;
+import com.ruralmarketplace.dto.UpdateCartQuantityRequest;
 import com.ruralmarketplace.controller.OrderController.OrderResponse;
 import com.ruralmarketplace.service.CartService;
 
@@ -24,6 +25,10 @@ public class CartController {
          }
     @GetMapping public Map<String,Object> get(@AuthenticationPrincipal Jwt jwt) { return cartService.get(jwt.getSubject()); }
     @PostMapping("/items") public List<CartItemResponse> add(@Valid @RequestBody AddCartItemRequest request, @AuthenticationPrincipal Jwt jwt) { return cartService.add(jwt.getSubject(), request); }
+    @PatchMapping("/items/{itemId}") public List<CartItemResponse> updateQuantity(@PathVariable Long itemId,
+            @Valid @RequestBody UpdateCartQuantityRequest request, @AuthenticationPrincipal Jwt jwt) {
+        return cartService.updateQuantity(jwt.getSubject(), itemId, request.getQuantity());
+    }
     @PostMapping("/checkout") public OrderResponse checkout(@Valid @RequestBody CartCheckoutRequest request, @AuthenticationPrincipal Jwt jwt) {
         return new OrderResponse(cartService.checkout(jwt.getSubject(), request));
     }

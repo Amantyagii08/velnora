@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.ruralmarketplace.entity.ShopApprovalStatus;
 
 public interface ShopRepository extends JpaRepository<Shop, Long> {
@@ -21,5 +23,6 @@ public interface ShopRepository extends JpaRepository<Shop, Long> {
     List<Shop> findByApprovalStatusAndActiveTrue(ShopApprovalStatus status);
     Optional<Shop> findByOwner_Id(Long ownerId);
     List<Shop> findByApprovalStatus(ShopApprovalStatus status);
+    Page<Shop> findByApprovalStatusAndActiveTrue(ShopApprovalStatus status, Pageable pageable);
 }
 

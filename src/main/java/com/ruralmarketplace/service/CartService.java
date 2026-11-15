@@ -47,6 +47,26 @@ public class CartService {
         Map<String,Object> result = new LinkedHashMap<>(); result.put("items", items.stream().map(CartItemResponse::new).toList()); result.put("total", total); return result;
     }
     @Transactional
+    public List<CartItemResponse> updateQuantity(String email, Long itemId, int quantity) {
+        CartItem item = cartRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found"));
+        if (!item.getCustomer().getEmail().equals(email)) {
+            throw new ResourceNotFoundException("Cart item not found");
+        }
+        Product product = item.getProduct();
+        if (!product.isActive() || !product.getShop().isActive()
+                || product.getShop().getApprovalStatus() != ShopApprovalStatus.APPROVED) {
+            throw new IllegalArgumentException("Product is unavailable");
+        }
+        if (!product.isManuallyAvailable() || product.getStockQuantity() == null
+                || quantity > product.getStockQuantity()) {
+            throw new IllegalArgumentException("Requested quantity exceeds available stock");
+        }
+        item.setQuantity(quantity);
+        cartRepository.save(item);
+        return cartRepository.findByCustomer_Email(email).stream().map(CartItemResponse::new).toList();
+    }
+    @Transactional
     public Order checkout(String email, CartCheckoutRequest checkoutRequest) {
         List<CartItem> cartItems = cartRepository.findByCustomer_Email(email);
         if (cartItems.isEmpty()) throw new IllegalArgumentException("Cart is empty");

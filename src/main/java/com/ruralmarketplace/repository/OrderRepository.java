@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Pageable;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
@@ -39,6 +40,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             String email
     );
 
+    @EntityGraph(attributePaths = {"shop", "customer", "items", "items.product"})
+    Optional<Order> findByIdAndShop_Id(Long orderId, Long shopId);
+
     // Get all orders placed by a particular customer
     @EntityGraph(attributePaths = {"shop", "customer", "items", "items.product"})
     List<Order> findByCustomer_EmailOrderByCreatedAtDesc(
@@ -47,4 +51,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     long countByStatus(OrderStatus status);
     @EntityGraph(attributePaths = {"shop", "customer", "items", "items.product"})
     List<Order> findByStatusOrderByCreatedAtDesc(OrderStatus status);
+
+    @Query("SELECT p.id, SUM(oi.quantity) FROM OrderItem oi "
+            + "JOIN oi.product p JOIN p.shop s WHERE oi.order.status <> :cancelled "
+            + "AND p.active = true AND s.active = true AND s.approvalStatus = :approved "
+            + "GROUP BY p.id "
+            + "ORDER BY SUM(oi.quantity) DESC, p.id DESC")
+    List<Object[]> findTopProductSales(@Param("cancelled") OrderStatus cancelled,
+            @Param("approved") com.ruralmarketplace.entity.ShopApprovalStatus approved, Pageable pageable);
+
+    @Query("SELECT o.shop.id, COUNT(o.id) FROM Order o "
+            + "JOIN o.shop s WHERE o.status <> :cancelled AND s.active = true "
+            + "AND s.approvalStatus = :approved GROUP BY s.id "
+            + "ORDER BY COUNT(o.id) DESC, o.shop.id DESC")
+    List<Object[]> findTopShopOrderCounts(@Param("cancelled") OrderStatus cancelled,
+            @Param("approved") com.ruralmarketplace.entity.ShopApprovalStatus approved, Pageable pageable);
 }

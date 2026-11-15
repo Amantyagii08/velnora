@@ -111,6 +111,22 @@ public class ImageStorageService {
                     StandardCopyOption.REPLACE_EXISTING);
         }
 
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            String storedPath = imageType + "/" + filename;
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCompletion(int status) {
+                    if (status != STATUS_COMMITTED) {
+                        try {
+                            deleteImage(storedPath);
+                        } catch (IOException ignored) {
+                            // Preserve the original transaction failure.
+                        }
+                    }
+                }
+            });
+        }
+
         return imageType + "/" + filename;
     }
 

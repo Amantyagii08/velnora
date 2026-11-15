@@ -25,10 +25,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -75,9 +78,11 @@ public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
 
     @Bean
     public JwtDecoder jwtDecoder(SecretKey jwtSecretKey) {
-        return NimbusJwtDecoder.withSecretKey(jwtSecretKey)
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(jwtSecretKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
+        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer("velnora"));
+        return decoder;
     }
 
     @Bean
@@ -170,6 +175,10 @@ public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
 
             .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
 
+            .exceptionHandling(errors -> errors
+                .authenticationEntryPoint(jsonAuthenticationEntryPoint())
+                .accessDeniedHandler(jsonAccessDeniedHandler()))
+
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt
                     .jwtAuthenticationConverter(jwtAuthenticationConverter)
@@ -177,5 +186,21 @@ public JwtEncoder jwtEncoder(SecretKey jwtSecretKey) {
             );
 
         return http.build();
+    }
+
+    private AuthenticationEntryPoint jsonAuthenticationEntryPoint() {
+        return (request, response, exception) -> {
+            response.setStatus(401);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"message\":\"Authentication required or token invalid\"}");
+        };
+    }
+
+    private AccessDeniedHandler jsonAccessDeniedHandler() {
+        return (request, response, exception) -> {
+            response.setStatus(403);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"message\":\"You do not have permission to perform this action\"}");
+        };
     }
 }

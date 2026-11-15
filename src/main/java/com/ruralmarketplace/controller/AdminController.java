@@ -16,6 +16,7 @@ import com.ruralmarketplace.dto.AdminShopResponse;
 import com.ruralmarketplace.dto.AdminProductResponse;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
+import org.springframework.transaction.annotation.Transactional;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -58,10 +59,23 @@ public class AdminController {
         user.setSuspended(suspended); return AdminUserResponse.from(users.save(user));
     }
     @GetMapping("/shops") public List<AdminShopResponse> shops() { return shops.findAll().stream().map(AdminShopResponse::from).toList(); }
-    @PatchMapping("/shops/{shopId}/approval") public AdminShopResponse approveShop(@PathVariable Long shopId, @RequestParam ShopApprovalStatus status) {
+    @GetMapping("/categories") public List<Category> allCategories() { return categoryRepository.findAll(); }
+    @PatchMapping("/shops/{shopId}/approval") public AdminShopResponse approveShop(@PathVariable Long shopId,
+            @RequestParam ShopApprovalStatus status, @RequestParam(required = false) String rejectionReason) {
         Shop shop = shops.findById(shopId).orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
         if (status == ShopApprovalStatus.PENDING) throw new IllegalArgumentException("Approval status must be APPROVED or REJECTED");
-        shop.setApprovalStatus(status); return AdminShopResponse.from(shops.save(shop));
+        if (shop.getApprovalStatus() != ShopApprovalStatus.PENDING) {
+            throw new IllegalStateException("Only pending shop applications can be approved or rejected");
+        }
+        if (status == ShopApprovalStatus.REJECTED && (rejectionReason == null || rejectionReason.isBlank())) {
+            throw new IllegalArgumentException("A rejection reason is required");
+        }
+        if (rejectionReason != null && rejectionReason.length() > 500) {
+            throw new IllegalArgumentException("Rejection reason cannot exceed 500 characters");
+        }
+        shop.setApprovalStatus(status);
+        shop.setRejectionReason(status == ShopApprovalStatus.REJECTED ? rejectionReason.trim() : null);
+        return AdminShopResponse.from(shops.save(shop));
     }
     @PatchMapping("/shops/{shopId}/suspension") public AdminShopResponse suspendShop(@PathVariable Long shopId, @RequestParam boolean suspended) {
         Shop shop = shops.findById(shopId).orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
@@ -102,6 +116,7 @@ public class AdminController {
         return categories.createCategory(category, image);
     }
     @PutMapping(value = "/categories/{categoryId}", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Transactional
     public Category updateCategory(@PathVariable Long categoryId, @Valid @ModelAttribute CategoryRequest request, @RequestParam(required = false) MultipartFile image) throws IOException {
         Category category = categoryRepository.findById(categoryId).orElseThrow(() -> new ResourceNotFoundException("Category not found"));
         category.setName(request.getName().trim());

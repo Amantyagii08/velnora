@@ -103,6 +103,9 @@ public class Shop {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(length = 500)
+    private String rejectionReason;
+
     public String getImagePath() {
         return imagePath;
     }
@@ -117,6 +120,8 @@ public class Shop {
     public void setApprovalStatus(ShopApprovalStatus approvalStatus) { this.approvalStatus = approvalStatus; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+    public String getRejectionReason() { return rejectionReason; }
+    public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
     
 }   
 

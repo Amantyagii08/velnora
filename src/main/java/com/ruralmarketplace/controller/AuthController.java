@@ -26,9 +26,10 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
-            @Valid @RequestBody RegisterRequest request) {
+            @Valid @RequestBody RegisterRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
 
-        AuthResponse response = authService.register(request);
+        AuthResponse response = authService.register(request, httpRequest.getRemoteAddr());
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)

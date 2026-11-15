@@ -7,6 +7,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 
 import com.ruralmarketplace.dto.CreateOrderRequest;
 import com.ruralmarketplace.entity.FulfillmentType;
@@ -31,17 +33,20 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final ShopRepository shopRepository;
     private final UserRepository userRepository;
+    private final EntityManager entityManager;
 
     public OrderService(
             OrderRepository orderRepository,
             ProductRepository productRepository,
             ShopRepository shopRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            EntityManager entityManager) {
 
         this.orderRepository = orderRepository;
         this.productRepository = productRepository;
         this.shopRepository = shopRepository;
         this.userRepository = userRepository;
+        this.entityManager = entityManager;
     }
 
     @Transactional
@@ -105,18 +110,22 @@ public class OrderService {
                             "Product not found: "
                                     + itemRequest.getProductId()));
 
+            // A cart may have loaded this Product before its row lock was acquired.
+            // Refresh after locking so stock checks use the latest committed value.
+            entityManager.refresh(product, LockModeType.PESSIMISTIC_WRITE);
+
             if (!product.getShop().getId().equals(shop.getId())) {
                 throw new IllegalArgumentException(
                         "All products must belong to the selected shop");
             }
 
-            if (!product.isManuallyAvailable() || product.getStockQuantity() <= 0) {
+            if (!product.isManuallyAvailable() || product.getStockQuantity() == null
+                    || product.getStockQuantity() <= 0) {
                 throw new IllegalArgumentException(
                         "Product is unavailable: " + product.getName());
             }
 
-            if (product.getStockQuantity() == null
-                    || product.getStockQuantity() < quantity) {
+            if (product.getStockQuantity() < quantity) {
                 throw new IllegalArgumentException(
                         "Insufficient stock for: " + product.getName());
             }
@@ -165,13 +174,13 @@ public class OrderService {
         Shop shop = shopRepository.findById(shopId).orElseThrow(() -> new ResourceNotFoundException("Shop not found"));
         if (actor.getRole() != com.ruralmarketplace.entity.UserRole.ADMIN
                 && (actor.getRole() != com.ruralmarketplace.entity.UserRole.SHOPKEEPER
-                || !shop.getOwner().getId().equals(actor.getId()))) {
+                || shop.getOwner() == null || !shop.getOwner().getId().equals(actor.getId()))) {
             throw new AccessDeniedException("You can only view orders for your own shop");
         }
 
         if (actor.getRole() == com.ruralmarketplace.entity.UserRole.SHOPKEEPER
-                && shop.getApprovalStatus() != ShopApprovalStatus.APPROVED) {
-            throw new IllegalArgumentException("Shop application is not approved yet");
+                && (shop.getApprovalStatus() != ShopApprovalStatus.APPROVED || !shop.isActive())) {
+            throw new AccessDeniedException("Shop orders are available only for approved active shops");
         }
         return orderRepository.findByShop_IdOrderByCreatedAtDesc(shopId);
     }
@@ -208,6 +217,7 @@ public class OrderService {
         User actor = userRepository.findByEmail(actorEmail).orElseThrow(() -> new ResourceNotFoundException("User not found"));
         boolean admin = actor.getRole() == com.ruralmarketplace.entity.UserRole.ADMIN;
         boolean owner = actor.getRole() == com.ruralmarketplace.entity.UserRole.SHOPKEEPER
+                && order.getShop().getOwner() != null
                 && order.getShop().getOwner().getId().equals(actor.getId());
         boolean customer = actor.getRole() == com.ruralmarketplace.entity.UserRole.CUSTOMER
                 && order.getCustomer().getId().equals(actor.getId());
@@ -286,7 +296,26 @@ public List<Order> getMyShopOrders(String email) {
     User owner = userRepository.findByEmail(email).orElseThrow(() -> new ResourceNotFoundException("Shopkeeper not found"));
     if (owner.getRole() != com.ruralmarketplace.entity.UserRole.SHOPKEEPER) throw new IllegalArgumentException("Only shopkeepers can access shop orders");
     Shop shop = shopRepository.findByOwner_Id(owner.getId()).orElseThrow(() -> new ResourceNotFoundException("No shop application found"));
+    if (shop.getApprovalStatus() != ShopApprovalStatus.APPROVED || !shop.isActive()) {
+        throw new AccessDeniedException("Shop orders are available only for approved active shops");
+    }
     return orderRepository.findByShop_IdOrderByCreatedAtDesc(shop.getId());
+}
+
+@Transactional(readOnly = true)
+public Order getMyShopOrderById(Long orderId, String email) {
+    User owner = userRepository.findByEmail(email)
+            .orElseThrow(() -> new ResourceNotFoundException("Shopkeeper not found"));
+    if (owner.getRole() != com.ruralmarketplace.entity.UserRole.SHOPKEEPER) {
+        throw new AccessDeniedException("Only shopkeepers can view shop orders");
+    }
+    Shop shop = shopRepository.findByOwner_Id(owner.getId())
+            .orElseThrow(() -> new ResourceNotFoundException("No shop application found"));
+    if (shop.getApprovalStatus() != ShopApprovalStatus.APPROVED || !shop.isActive()) {
+        throw new AccessDeniedException("Shop orders are available only for approved active shops");
+    }
+    return orderRepository.findByIdAndShop_Id(orderId, shop.getId())
+            .orElseThrow(() -> new ResourceNotFoundException("Order not found for this shop"));
 }
 
 }

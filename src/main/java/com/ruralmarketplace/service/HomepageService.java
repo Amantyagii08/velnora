@@ -1,9 +1,11 @@
 package com.ruralmarketplace.service;
 
-import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.ruralmarketplace.entity.*;
@@ -28,37 +30,43 @@ public class HomepageService {
                 "categories", categories.findByActiveTrue(),
                 "popularProducts", getPopularProducts(limit),
                 "featuredShops", getFeaturedShops(limit),
-                "discountedProducts", products.findAll().stream().filter(this::publicProduct)
-                        .filter(p -> Boolean.TRUE.equals(p.getDiscountActive())).limit(limit).toList(),
-                "clearanceDeals", productService.getClearanceDeals(),
-                "allShops", shops.findByApprovalStatusAndActiveTrue(ShopApprovalStatus.APPROVED));
+                "discountedProducts", products.findPublicDiscountedProducts(ShopApprovalStatus.APPROVED,
+                        PageRequest.of(0, limit)).getContent(),
+                "clearanceDeals", productService.getClearanceDeals(limit),
+                "allShops", shops.findByApprovalStatusAndActiveTrue(ShopApprovalStatus.APPROVED,
+                        PageRequest.of(0, limit)).getContent());
     }
 
     @Transactional(readOnly = true)
     public List<Product> getPopularProducts(int limit) {
-        Map<Long, Long> sales = orders.findAll().stream()
-                .filter(o -> o.getStatus() != OrderStatus.CANCELLED)
-                .flatMap(o -> o.getItems().stream())
-                .collect(Collectors.groupingBy(item -> item.getProduct().getId(), Collectors.summingLong(OrderItem::getQuantity)));
-        return products.findAll().stream().filter(this::publicProduct)
-                .sorted(Comparator.<Product>comparingLong(p -> sales.getOrDefault(p.getId(), 0L)).reversed()
-                        .thenComparing(Product::getId, Comparator.reverseOrder()))
-                .limit(limit).toList();
+        List<Long> popularIds = orders.findTopProductSales(OrderStatus.CANCELLED, ShopApprovalStatus.APPROVED,
+                PageRequest.of(0, limit)).stream().map(row -> ((Number) row[0]).longValue()).toList();
+        Map<Long, Product> found = new LinkedHashMap<>();
+        products.findAllById(popularIds).forEach(product -> found.put(product.getId(), product));
+        List<Product> result = popularIds.stream().map(found::get).filter(java.util.Objects::nonNull)
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (result.size() < limit) {
+            products.findPublicProducts(ShopApprovalStatus.APPROVED, PageRequest.of(0, limit)).getContent().stream()
+                    .filter(product -> !found.containsKey(product.getId()))
+                    .limit(limit - result.size()).forEach(result::add);
+        }
+        return result;
     }
 
     @Transactional(readOnly = true)
     public List<Shop> getFeaturedShops(int limit) {
-        Map<Long, Long> sales = orders.findAll().stream()
-                .filter(o -> o.getStatus() != OrderStatus.CANCELLED)
-                .collect(Collectors.groupingBy(o -> o.getShop().getId(), Collectors.counting()));
-        return shops.findByApprovalStatusAndActiveTrue(ShopApprovalStatus.APPROVED).stream()
-                .sorted(Comparator.<Shop>comparingLong(s -> sales.getOrDefault(s.getId(), 0L)).reversed()
-                        .thenComparing(Shop::getId, Comparator.reverseOrder()))
-                .limit(limit).toList();
-    }
-
-    private boolean publicProduct(Product product) {
-        return product.isActive() && product.getShop().isActive()
-                && product.getShop().getApprovalStatus() == ShopApprovalStatus.APPROVED;
+        List<Long> featuredIds = orders.findTopShopOrderCounts(OrderStatus.CANCELLED,
+                ShopApprovalStatus.APPROVED, PageRequest.of(0, limit)).stream()
+                .map(row -> ((Number) row[0]).longValue()).toList();
+        Map<Long, Shop> found = new LinkedHashMap<>();
+        shops.findAllById(featuredIds).forEach(shop -> found.put(shop.getId(), shop));
+        List<Shop> result = featuredIds.stream().map(found::get).filter(java.util.Objects::nonNull)
+                .collect(Collectors.toCollection(ArrayList::new));
+        if (result.size() < limit) {
+            shops.findByApprovalStatusAndActiveTrue(ShopApprovalStatus.APPROVED, PageRequest.of(0, limit))
+                    .getContent().stream().filter(shop -> !found.containsKey(shop.getId()))
+                    .limit(limit - result.size()).forEach(result::add);
+        }
+        return result;
     }
 }
