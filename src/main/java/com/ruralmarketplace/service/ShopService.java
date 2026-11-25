@@ -2,6 +2,16 @@
 
 package com.ruralmarketplace.service;
 
+import java.io.IOException;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.ruralmarketplace.dto.CreateShopRequest;
 import com.ruralmarketplace.dto.UpdateShopRequest;
 import com.ruralmarketplace.entity.Category;
@@ -10,22 +20,12 @@ import com.ruralmarketplace.entity.ShopApprovalStatus;
 import com.ruralmarketplace.entity.User;
 import com.ruralmarketplace.entity.UserRole;
 import com.ruralmarketplace.exception.CategoryNotFoundException;
-import com.ruralmarketplace.exception.ShopNotFoundException;
 import com.ruralmarketplace.exception.ResourceNotFoundException;
+import com.ruralmarketplace.exception.ShopNotFoundException;
 import com.ruralmarketplace.repository.CategoryRepository;
 import com.ruralmarketplace.repository.ShopRepository;
 import com.ruralmarketplace.repository.UserRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 import com.ruralmarketplace.service.image.ImageStorageService;
-import org.springframework.web.multipart.MultipartFile;
-import java.io.IOException;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import com.ruralmarketplace.util.SearchText;
 
 @Service

@@ -2,17 +2,22 @@ package com.ruralmarketplace.controller;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
+
+import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import org.springframework.web.bind.annotation.*;
-import com.ruralmarketplace.entity.Product;
-import com.ruralmarketplace.service.ProductService;
 import com.ruralmarketplace.dto.ProductResponse;
-import org.springframework.data.domain.Page;
+import com.ruralmarketplace.service.ProductService;
 
 @RestController
 @RequestMapping("/api")

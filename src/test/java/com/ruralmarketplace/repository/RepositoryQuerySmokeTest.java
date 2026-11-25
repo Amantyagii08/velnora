@@ -5,15 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ruralmarketplace.TestJwtProperties;
 import com.ruralmarketplace.entity.OrderStatus;
 import com.ruralmarketplace.entity.ShopApprovalStatus;
-import com.ruralmarketplace.repository.UserRepository;
 
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:velnora-repositories;MODE=MySQL;DB_CLOSE_DELAY=-1",

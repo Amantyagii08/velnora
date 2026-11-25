@@ -1,32 +1,38 @@
 
 package com.ruralmarketplace.controller;
 
-import com.ruralmarketplace.dto.AddStockRequest;
-import com.ruralmarketplace.dto.ApplyDiscountRequest;
-import com.ruralmarketplace.dto.CreateProductRequest;
-import com.ruralmarketplace.entity.Product;
-import com.ruralmarketplace.service.ProductService;
-
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import com.ruralmarketplace.dto.UpdateProductRequest;
-import com.ruralmarketplace.dto.SetStockRequest;
-import com.ruralmarketplace.dto.StockAdjustmentResponse;
-import com.ruralmarketplace.dto.ProductResponse;
-import com.ruralmarketplace.dto.ProductComparisonResponse;
-
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
 
+import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.data.domain.Page;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.ruralmarketplace.dto.AddStockRequest;
+import com.ruralmarketplace.dto.ApplyDiscountRequest;
+import com.ruralmarketplace.dto.CreateProductRequest;
+import com.ruralmarketplace.dto.ProductComparisonResponse;
+import com.ruralmarketplace.dto.ProductResponse;
+import com.ruralmarketplace.dto.SetStockRequest;
+import com.ruralmarketplace.dto.StockAdjustmentResponse;
+import com.ruralmarketplace.dto.UpdateProductRequest;
+import com.ruralmarketplace.entity.Product;
+import com.ruralmarketplace.service.ProductService;
+
 import jakarta.validation.Valid;
 
 @RestController

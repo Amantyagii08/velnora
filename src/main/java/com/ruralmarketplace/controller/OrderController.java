@@ -105,18 +105,18 @@ public OrderResponse getMyShopOrderById(@PathVariable Long orderId, @Authenticat
 
     public static class OrderResponse {
         private final Long id, shopId;
-        private final String shopName, shopContactPhone, shopContactEmail, customerName, customerPhone, fulfillmentType, deliveryAddress, status;
+        private final String shopName, shopAddress, shopContactPhone, shopContactEmail, customerName, customerPhone, fulfillmentType, deliveryAddress, status;
         private final java.math.BigDecimal totalAmount;
         private final java.time.LocalDateTime createdAt;
         private final List<OrderLineResponse> items;
         public OrderResponse(Order order) {
-            id = order.getId(); shopId = order.getShop().getId(); shopName = order.getShop().getName();
+            id = order.getId(); shopId = order.getShop().getId(); shopName = order.getShop().getName(); shopAddress = order.getShop().getAddress();
             shopContactPhone = order.getShop().getContactPhone(); shopContactEmail = order.getShop().getContactEmail();
             customerName = order.getCustomerName(); customerPhone = order.getCustomerPhone(); fulfillmentType = order.getFulfillmentType().name();
             deliveryAddress = order.getDeliveryAddress(); totalAmount = order.getTotalAmount(); status = order.getStatus().name(); createdAt = order.getCreatedAt();
             items = order.getItems().stream().map(OrderLineResponse::new).toList();
         }
-        public Long getId() { return id; } public Long getShopId() { return shopId; } public String getShopName() { return shopName; }
+        public Long getId() { return id; } public Long getShopId() { return shopId; } public String getShopName() { return shopName; } public String getShopAddress() { return shopAddress; }
         public String getShopContactPhone() { return shopContactPhone; } public String getShopContactEmail() { return shopContactEmail; }
         public String getCustomerName() { return customerName; } public String getCustomerPhone() { return customerPhone; }
         public String getFulfillmentType() { return fulfillmentType; } public String getDeliveryAddress() { return deliveryAddress; }

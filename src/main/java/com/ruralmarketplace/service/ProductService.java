@@ -1,12 +1,28 @@
 
 package com.ruralmarketplace.service;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Set;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.ruralmarketplace.dto.AddStockRequest;
 import com.ruralmarketplace.dto.ApplyDiscountRequest;
 import com.ruralmarketplace.dto.CreateProductRequest;
+import com.ruralmarketplace.dto.SetStockRequest;
+import com.ruralmarketplace.dto.UpdateProductRequest;
 import com.ruralmarketplace.entity.Product;
 import com.ruralmarketplace.entity.Shop;
 import com.ruralmarketplace.entity.ShopApprovalStatus;
+import com.ruralmarketplace.entity.StockAdjustment;
 import com.ruralmarketplace.entity.User;
 import com.ruralmarketplace.exception.ProductNotFoundException;
 import com.ruralmarketplace.exception.ShopNotFoundException;
@@ -14,26 +30,6 @@ import com.ruralmarketplace.repository.ProductRepository;
 import com.ruralmarketplace.repository.ShopRepository;
 import com.ruralmarketplace.repository.UserRepository;
 import com.ruralmarketplace.service.image.ImageStorageService;
-
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import com.ruralmarketplace.dto.UpdateProductRequest;
-import com.ruralmarketplace.dto.SetStockRequest;
-import com.ruralmarketplace.entity.StockAdjustment;
-
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Set;
-import java.util.Map;
-import java.util.LinkedHashMap;
-
-import java.io.IOException;
-import org.springframework.web.multipart.MultipartFile;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.beans.factory.annotation.Autowired;
 
 
 @Service

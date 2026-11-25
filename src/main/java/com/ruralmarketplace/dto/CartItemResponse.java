@@ -6,6 +6,8 @@ import com.ruralmarketplace.entity.CartItem;
 public class CartItemResponse {
     private final Long id;
     private final Long productId;
+    private final Long shopId;
+    private final String shopName;
     private final String productName;
     private final String imagePath;
     private final String brand;
@@ -18,7 +20,7 @@ public class CartItemResponse {
 
     public CartItemResponse(CartItem item) {
         var product = item.getProduct();
-        id = item.getId(); productId = product.getId(); productName = product.getName();
+        id = item.getId(); productId = product.getId(); shopId = product.getShop().getId(); shopName = product.getShop().getName(); productName = product.getName();
         imagePath = product.getImagePath(); brand = product.getBrand(); variant = product.getVariant();
         quantity = item.getQuantity(); stockQuantity = product.getStockQuantity();
         unitPrice = product.getCurrentPrice();
@@ -29,6 +31,7 @@ public class CartItemResponse {
                 && product.getShop().getApprovalStatus() == com.ruralmarketplace.entity.ShopApprovalStatus.APPROVED;
     }
     public Long getId() { return id; } public Long getProductId() { return productId; }
+    public Long getShopId() { return shopId; } public String getShopName() { return shopName; }
     public String getProductName() { return productName; } public String getImagePath() { return imagePath; }
     public String getBrand() { return brand; } public String getVariant() { return variant; }
     public Integer getQuantity() { return quantity; } public Integer getStockQuantity() { return stockQuantity; }
